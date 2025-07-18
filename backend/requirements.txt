@@ -1,0 +1,11 @@
+google-cloud-storage==2.14.0
+# Google Cloud Speech and Text-to-Speech
+google-cloud-speech==2.21.0
+google-cloud-texttospeech==2.16.3
+
+# Fallback Speech Recognition
+SpeechRecognition==3.10.0
+
+# Fallback Text-to-Speech
+gTTS==2.4.0 
+channels==4.0.0 

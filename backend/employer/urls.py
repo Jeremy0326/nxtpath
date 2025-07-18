@@ -1,0 +1,35 @@
+from django.urls import path
+from .views import (
+    DashboardStatsView, 
+    TopCandidatesView, 
+    RecentActivityView, 
+    EmployerJobsView, 
+    JobApplicantsView,
+    JobMatchingWeightageView,
+    CandidateProfileView,
+    ResumeBankView,
+    AllCandidatesView,
+    AnalysisReportView,
+    InterviewReportView,
+    HiringPipelineStatsView,
+    TeamMembersView,
+    CompanyProfileView,
+)
+
+urlpatterns = [
+    path('dashboard-stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('top-candidates/', TopCandidatesView.as_view(), name='top-candidates'),
+    path('recent-activity/', RecentActivityView.as_view(), name='recent-activity'),
+    path('jobs/', EmployerJobsView.as_view(), name='employer-jobs'),
+    path('jobs/<uuid:job_id>/', EmployerJobsView.as_view(), name='employer-job-detail'),
+    path('jobs/<uuid:job_id>/applicants/', JobApplicantsView.as_view(), name='job-applicants'),
+    path('jobs/<uuid:job_id>/resumes/<uuid:resume_id>/analysis/', AnalysisReportView.as_view(), name='analysis-report'),
+    path('applications/<uuid:application_id>/report/', InterviewReportView.as_view(), name='interview-report'),
+    path('jobs/<uuid:job_id>/weightage/', JobMatchingWeightageView.as_view(), name='job-weightage'),
+    path('candidates/<uuid:candidate_id>/', CandidateProfileView.as_view(), name='candidate-profile'),
+    path('resume-bank/', ResumeBankView.as_view(), name='resume-bank'),
+    path('candidates/', AllCandidatesView.as_view(), name='all-candidates'),
+    path('hiring-pipeline-stats/', HiringPipelineStatsView.as_view(), name='hiring-pipeline-stats'),
+    path('team-members/', TeamMembersView.as_view(), name='team-members'),
+    path('company-profile/', CompanyProfileView.as_view(), name='company-profile'),
+] 
