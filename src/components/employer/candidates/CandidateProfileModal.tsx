@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Phone, Linkedin, Github, Globe, Star, Briefcase, GraduationCap, FileText, Check, XCircle, Eye, Brain } from 'lucide-react';
+import { X, Mail, Phone, Linkedin, Github, Globe, Star, Briefcase, GraduationCap, FileText, Check, XCircle, Eye, Brain, User } from 'lucide-react';
 import { StudentProfile, Candidate } from '../../../types/user';
 import { Button } from '../../ui/button';
 import { employerService } from '../../../services/employerService';
@@ -14,10 +14,11 @@ interface CandidateProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   profile: Candidate | null;
-  onStatusUpdate: () => void;
+  onStatusUpdate?: () => void;
+  context?: 'resume-bank' | 'applicant';
 }
 
-export function CandidateProfileModal({ isOpen, onClose, profile, onStatusUpdate }: CandidateProfileModalProps) {
+export function CandidateProfileModal({ isOpen, onClose, profile, onStatusUpdate, context = 'applicant' }: CandidateProfileModalProps) {
   const { addToast } = useToast();
   const [showCVPreview, setShowCVPreview] = useState(false);
   const [cvUrl, setCvUrl] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export function CandidateProfileModal({ isOpen, onClose, profile, onStatusUpdate
   const [pdfError, setPdfError] = useState(false);
   const [showMatchReport, setShowMatchReport] = useState<{jobId: string, resumeId: string} | null>(null);
   const [showInterviewReport, setShowInterviewReport] = useState<string | null>(null);
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
 
   if (!profile) return null;
 
@@ -36,7 +38,7 @@ export function CandidateProfileModal({ isOpen, onClose, profile, onStatusUpdate
     try {
       await employerService.updateCandidateStatus(profile.user.id, status);
       addToast({ title: 'Success', description: `Candidate status updated to ${status}.` });
-      onStatusUpdate();
+      onStatusUpdate?.();
       onClose();
     } catch (error) {
       addToast({ title: 'Error', description: 'Failed to update candidate status.', variant: 'destructive' });
@@ -57,6 +59,9 @@ export function CandidateProfileModal({ isOpen, onClose, profile, onStatusUpdate
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
+
+  // Skill parsing: support string or object
+  const parsedSkills = (profile?.skills || []).map(skill => typeof skill === 'string' ? skill : skill.name);
 
   return (
     <AnimatePresence>
@@ -142,9 +147,9 @@ export function CandidateProfileModal({ isOpen, onClose, profile, onStatusUpdate
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">Skills</h3>
                     <div className="flex flex-wrap gap-2">
-                      {(profile.skills || []).map(skill => (
-                        <span key={skill.name} className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">{skill.name}</span>
-                      ))}
+                      {parsedSkills.length > 0 ? parsedSkills.map(skill => (
+                        <span key={skill} className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">{skill}</span>
+                      )) : <span className="text-gray-400">No skills listed.</span>}
                     </div>
                   </div>
                    <div>
@@ -213,21 +218,45 @@ export function CandidateProfileModal({ isOpen, onClose, profile, onStatusUpdate
               </div>
             </div>
             
-            <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
-                <div>
-                     {/* Potentially show current status */}
-                </div>
+            {/* Footer actions: context-aware */}
+            {context === 'applicant' ? (
+              <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
+                <div></div>
                 <div className="flex space-x-4">
-                    <Button variant="destructive" onClick={() => handleStatusUpdate('rejected')}>
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Reject
-                    </Button>
-                    <Button variant="success" onClick={() => handleStatusUpdate('offer')}>
-                        <Check className="mr-2 h-4 w-4" />
-                        Make Offer
-                    </Button>
+                  <Button variant="destructive" onClick={() => handleStatusUpdate('rejected')}>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Reject
+                  </Button>
+                  <Button variant="success" onClick={() => handleStatusUpdate('offer')}>
+                    <Check className="mr-2 h-4 w-4" />
+                    Make Offer
+                  </Button>
                 </div>
-            </div>
+              </div>
+            ) : (
+              <div className="p-6 bg-gray-50 border-t flex justify-end items-center">
+                <Button variant="primary" onClick={() => setShowConnectDialog(true)}>
+                  <User className="mr-2 h-4 w-4" />
+                  Connect
+                </Button>
+              </div>
+            )}
+            {/* Connect dialog/modal for resume bank context */}
+            {context === 'resume-bank' && showConnectDialog && (
+              <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowConnectDialog(false)}>
+                <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full relative" onClick={e => e.stopPropagation()}>
+                  <button className="absolute top-2 right-2 text-gray-400 hover:text-indigo-600" onClick={() => setShowConnectDialog(false)}>
+                    <X className="h-5 w-5" />
+                  </button>
+                  <h2 className="text-xl font-bold mb-4">Connect with {profile.user.full_name}</h2>
+                  <p className="mb-4 text-gray-700">Send a message or connection request to this candidate.</p>
+                  <textarea className="w-full border rounded p-2 mb-4" rows={4} placeholder="Write a message (optional)..." />
+                  <Button variant="primary" className="w-full" onClick={() => { setShowConnectDialog(false); addToast({ title: 'Connection sent', description: 'Your connection request has been sent.' }); }}>
+                    Send Connection Request
+                  </Button>
+                </div>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

@@ -3,17 +3,17 @@ import { useParams, Link } from 'react-router-dom';
 import { employerService } from '../../../services/employerService';
 import { Application } from '../../../types/job';
 import { StudentProfile } from '../../../types/user';
-import { Loader2, ArrowLeft, User, Star, Mail, Phone, Briefcase, BrainCircuit, FileText } from 'lucide-react';
+import { Loader2, ArrowLeft, Star, Mail, Phone, FileText, Inbox, CalendarClock, Gift, XCircle, BrainCircuit } from 'lucide-react';
 import { CandidateProfileModal } from '../../../components/employer/candidates/CandidateProfileModal';
 import { CandidateMatchReportModal } from '../../../components/jobs/CandidateMatchReportModal';
 import { Button } from '../../../components/ui/button';
 import { ViewInterviewReportModal } from '../../../components/interview/ViewInterviewReportModal';
-import { useState as useReactState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
+import { Card } from '../../../components/ui/card';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../../components/ui/dialog';
+// useState from React is sufficient
 
 
 export function EmployerJobApplicants() {
@@ -24,8 +24,10 @@ export function EmployerJobApplicants() {
   const [error, setError] = useState('');
   const [selectedProfile, setSelectedProfile] = useState<StudentProfile | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<{jobId: string, candidateId: string, resumeId: string} | null>(null);
+  const [selectedReport, setSelectedReport] = useState<{jobId: string, resumeId: string} | null>(null);
   const [selectedInterviewReport, setSelectedInterviewReport] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban'); // Default to Kanban
+  const [detailsModal, setDetailsModal] = useState<{ open: boolean; application: Application | null }>({ open: false, application: null });
 
 
   useEffect(() => {
@@ -61,21 +63,34 @@ export function EmployerJobApplicants() {
   };
 
   const handleViewReport = (application: Application) => {
-    if (jobId && application.applicant.id && application.resume?.id) {
+    if (jobId && application.resume?.id) {
         setSelectedReport({
             jobId: jobId,
-            candidateId: application.applicant.id,
             resumeId: application.resume.id,
         });
     } else {
         // Handle case where IDs are missing
-        console.error("Cannot open report: Missing job, candidate, or resume ID");
+        console.error("Cannot open report: Missing job or resume ID");
     }
   };
 
   const handleViewInterviewReport = (applicationId: string) => {
     setSelectedInterviewReport(applicationId);
   }
+
+  const handlePipelineAction = async (application: Application, action: 'offered' | 'rejected') => {
+    try {
+      await employerService.updateCandidateStatus(
+        application.applicant.id,
+        action,
+        jobId
+      );
+      fetchApplicants(); // Refresh applicants to show updated status
+    } catch (error) {
+      console.error(`Failed to ${action} application`, error);
+      // You might want to show a toast notification here
+    }
+  };
 
   if (isLoading) {
     return <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>;
@@ -85,150 +100,123 @@ export function EmployerJobApplicants() {
     return <div className="p-8 text-center text-red-500">{error}</div>;
   }
 
-  // Even more compact ApplicantCard for Kanban
-  function ApplicantCardCompact({ application, onViewDetails }: { application: Application; onViewDetails: () => void }) {
+  // Kanban status config (from CandidatesKanbanPage)
+  const statusConfig = {
+    applied: { title: 'Applied', color: 'bg-blue-50', icon: <Inbox className="h-7 w-7 text-blue-400" /> },
+    interviewed: { title: 'Interviewed', color: 'bg-purple-50', icon: <CalendarClock className="h-7 w-7 text-purple-400" /> },
+    offered: { title: 'Offered', color: 'bg-green-50', icon: <Gift className="h-7 w-7 text-green-400" /> },
+    rejected: { title: 'Rejected', color: 'bg-red-50', icon: <XCircle className="h-7 w-7 text-red-400" /> },
+  };
+  const columns = ['applied', 'interviewed', 'offered', 'rejected'];
+
+  // KanbanColumn for applicants
+  function KanbanColumn({ status, applicants, onViewDetails }: { status: keyof typeof statusConfig; applicants: Application[]; onViewDetails: (app: Application) => void }) {
     return (
-      <Card className="hover:shadow-lg transition-shadow duration-200 group p-2 flex flex-col items-center gap-1 min-h-[140px]">
-        <img
-          className="h-10 w-10 rounded-full object-cover border border-indigo-100 group-hover:border-indigo-400 transition"
-          src={application.applicant.profile_picture_url || `https://i.pravatar.cc/150?u=${application.applicant.id}`}
-          alt={application.applicant.full_name}
-        />
-        <div className="text-center w-full">
-          <div className="font-semibold text-gray-900 truncate text-sm">{application.applicant.full_name}</div>
-          {application.applicant.student_profile?.major && (
-            <div className="text-xs text-gray-500 truncate">{application.applicant.student_profile.major}</div>
+      <div className={`rounded-2xl shadow-md min-h-[340px] flex flex-col w-full max-w-xs ${statusConfig[status].color} border border-gray-100 p-0`} style={{ minWidth: 240, maxWidth: 280 }}>
+        <div className="flex items-center gap-3 px-4 py-3 border-b bg-white/80 rounded-t-2xl sticky top-0 z-10 shadow-sm">
+          {statusConfig[status].icon}
+          <span className="text-base font-bold text-gray-800">{statusConfig[status].title}</span>
+          <Badge variant="secondary" className="ml-auto">{applicants.length}</Badge>
+        </div>
+        <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
+          {applicants.length > 0 ? (
+            applicants.map(app => (
+              <ApplicantCardCompact key={app.id} application={app} onViewDetails={() => onViewDetails(app)} />
+            ))
+          ) : (
+            <div className="text-xs text-gray-400 text-center mt-8">No candidates</div>
           )}
         </div>
-        <Badge variant="secondary" className="flex items-center gap-1 text-green-700 bg-green-50 border-green-200 mt-1">
-          <Star className="h-3 w-3 mr-1 text-green-500" />
-          {typeof application.ai_match_score === 'number' ? `${application.ai_match_score}%` : '—'}
-        </Badge>
-        <Button size="sm" className="mt-1 w-full" onClick={onViewDetails}>View</Button>
-      </Card>
+      </div>
     );
   }
 
-  // Modal with tabs for Profile, CV, AI Match Report, Interview Report, Actions
-  function ApplicantDetailsModal({ open, onClose, application, onViewReport, onViewInterviewReport, onOffer, onReject }: {
-    open: boolean;
-    onClose: () => void;
-    application: Application | null;
-    onViewReport: (application: Application) => void;
-    onViewInterviewReport: (applicationId: string) => void;
-    onOffer: () => void;
-    onReject: () => void;
+  function ApplicantTable({ applicants, onViewDetails, handleViewProfile, handleViewReport, handleViewInterviewReport }: {
+    applicants: Application[];
+    onViewDetails: (app: Application) => void;
+    handleViewProfile: (applicantId: string) => void;
+    handleViewReport: (application: Application) => void;
+    handleViewInterviewReport: (applicationId: string) => void;
   }) {
-    const [tab, setTab] = useReactState<'profile' | 'cv' | 'ai' | 'interview'>('profile');
-    const [showPdf, setShowPdf] = useReactState(false);
-    const [numPages, setNumPages] = useReactState<number | null>(null);
-    const [pdfError, setPdfError] = useReactState(false);
-    const [aiReportLoading, setAiReportLoading] = useReactState(false);
-    const [aiReport, setAiReport] = useReactState<any>(null);
-    const [aiReportError, setAiReportError] = useReactState<string | null>(null);
-
-    if (!application) return null;
-    const canOffer = application.status === 'interviewed';
-    const canReject = application.status === 'interviewed';
-    const resume = application.resume;
-    const hasCV = !!resume?.file_url;
-
-    // Fetch AI Match Report
-    const fetchAIReport = async () => {
-      if (!application.job.id || !resume?.id) return;
-      setAiReportLoading(true);
-      setAiReportError(null);
-      try {
-        const data = await import('../../../services/jobService').then(m => m.jobService.getAnalysisReportForCandidate(application.job.id, resume.id));
-        if (data && !data.processing) {
-          setAiReport(data);
-        } else {
-          setAiReport(null);
-          setAiReportError('AI Match Report is being generated. Please check back soon.');
-        }
-      } catch (err: any) {
-        setAiReport(null);
-        setAiReportError('Failed to fetch AI Match Report.');
-      } finally {
-        setAiReportLoading(false);
-      }
-    };
-
     return (
-      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 ${open ? '' : 'hidden'}`}> {/* Modal overlay */}
-        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-0 relative">
-          <button className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl" onClick={onClose}>&times;</button>
-          <Tabs value={tab} onValueChange={setTab} className="w-full">
-            <TabsList className="grid grid-cols-4 w-full border-b">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="cv">CV</TabsTrigger>
-              <TabsTrigger value="ai">AI Match</TabsTrigger>
-              <TabsTrigger value="interview">Interview</TabsTrigger>
-            </TabsList>
-            <TabsContent value="profile" className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <img className="h-16 w-16 rounded-full object-cover border-2 border-indigo-100" src={application.applicant.profile_picture_url || `https://i.pravatar.cc/150?u=${application.applicant.id}`} alt={application.applicant.full_name} />
-                <div>
-                  <div className="text-xl font-bold text-gray-900">{application.applicant.full_name}</div>
-                  <div className="text-gray-600 text-sm">Major: <span className="font-semibold">{application.applicant.student_profile?.major || '—'}</span></div>
-                  <div className="text-xs text-gray-500 mt-1">Applied on {application.created_at ? new Date(application.created_at).toLocaleDateString() : '—'}</div>
-                  {application.applicant.email && <div className="text-xs text-gray-500">Email: {application.applicant.email}</div>}
-                </div>
-              </div>
-              {/* Add more student details as needed */}
-              <Button size="sm" variant="outline" className="mt-2" onClick={() => setTab('cv')}>View CV</Button>
-            </TabsContent>
-            <TabsContent value="cv" className="p-6">
-              {hasCV ? (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold text-gray-800">{resume.file_name}</span>
-                    <Button size="sm" variant="outline" onClick={() => setShowPdf(v => !v)}>{showPdf ? 'Hide' : 'Show'} PDF</Button>
-                  </div>
-                  {showPdf && (
-                    <div className="border rounded bg-gray-50 p-2 max-h-[400px] overflow-auto">
-                      <Document
-                        file={resume.file_url}
-                        loading={<p className="text-center py-6 text-lg">Loading preview…</p>}
-                        onLoadError={() => setPdfError(true)}
-                        onSourceError={() => setPdfError(true)}
-                        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                      >
-                        {numPages && Array.from({ length: numPages }, (_, i) => (
-                          <Page key={i + 1} pageNumber={i + 1} width={500} className="mx-auto mb-2 border rounded" />
-                        ))}
-                      </Document>
-                      {pdfError && <div className="mt-6 text-center text-red-500">Unable to display preview. File may be corrupted.</div>}
+      <div className="overflow-x-auto rounded-2xl shadow-md bg-white border border-gray-100">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avatar</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Major</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Match %</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-100">
+            {applicants.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-8 text-gray-400">No candidates</td>
+              </tr>
+            ) : (
+              applicants.map(app => (
+                <tr key={app.id} className="hover:bg-gray-50 transition">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <img
+                      className="h-9 w-9 rounded-full object-cover border border-indigo-100"
+                      src={app.applicant.profile_picture_url || `https://i.pravatar.cc/150?u=${app.applicant.id}`}
+                      alt={app.applicant.full_name}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{app.applicant.full_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">{app.major || 'No major'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {app.ai_match_score != null ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                        <Star className="h-3 w-3 mr-1 text-green-500" />
+                        {app.ai_match_score}%
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      app.status === 'applied' ? 'bg-blue-100 text-blue-800' :
+                      app.status === 'interviewed' ? 'bg-purple-100 text-purple-800' :
+                      app.status === 'offered' ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-700">
+                    {app.applied_at ? new Date(app.applied_at).toLocaleDateString() : '—'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex gap-2">
+                      <Button size="icon" variant="ghost" aria-label="View Profile" onClick={() => handleViewProfile(app.applicant.id)}>
+                        <span className="sr-only">View Profile</span>
+                        <Inbox className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" aria-label="View Resume" onClick={() => onViewDetails(app)}>
+                        <span className="sr-only">View Resume</span>
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" aria-label="AI Match Report" onClick={() => handleViewReport(app)} disabled={!app.resume?.id}>
+                        <span className="sr-only">AI Match Report</span>
+                        <BrainCircuit className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" aria-label="AI Interview Report" onClick={() => handleViewInterviewReport(app.id)} disabled={app.status !== 'interviewed'}>
+                        <span className="sr-only">AI Interview Report</span>
+                        <CalendarClock className="h-4 w-4" />
+                      </Button>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-gray-500">No CV uploaded.</div>
-              )}
-              <Button size="sm" variant="outline" className="mt-2" onClick={() => setTab('profile')}>Back to Profile</Button>
-            </TabsContent>
-            <TabsContent value="ai" className="p-6">
-              <Button size="sm" variant="outline" onClick={fetchAIReport} disabled={aiReportLoading} className="mb-2">{aiReportLoading ? 'Loading...' : 'Generate/Refresh AI Match Report'}</Button>
-              {aiReportError && <div className="text-red-500 text-sm mb-2">{aiReportError}</div>}
-              {aiReport ? (
-                <div className="border rounded bg-gray-50 p-3">
-                  <div className="font-semibold text-lg text-indigo-700 mb-2">AI Match Score: {aiReport.shared?.overall_score ?? '—'}%</div>
-                  {/* Show more summary fields as needed */}
-                  <div className="text-sm text-gray-700">{aiReport.shared?.skills_analysis?.summary || 'No summary available.'}</div>
-                </div>
-              ) : !aiReportLoading && !aiReportError ? (
-                <div className="text-gray-500">No AI Match Report available.</div>
-              ) : null}
-            </TabsContent>
-            <TabsContent value="interview" className="p-6">
-              <Button size="sm" variant="outline" onClick={() => onViewInterviewReport(application.id)} disabled={application.status !== 'interviewed'}>View Interview Report</Button>
-            </TabsContent>
-          </Tabs>
-          <div className="flex gap-2 p-6 border-t mt-2">
-            <Button variant="success" disabled={!canOffer} onClick={onOffer}>Make Offer</Button>
-            <Button variant="destructive" disabled={!canReject} onClick={onReject}>Reject</Button>
-          </div>
-        </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -245,57 +233,55 @@ export function EmployerJobApplicants() {
             <h1 className="text-3xl font-bold text-gray-900">Applicants for {jobTitle}</h1>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200/80 shadow-sm">
-            <ul className="divide-y divide-gray-200">
-              {applicants.map(app => (
-                <li key={app.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <img className="h-12 w-12 rounded-full object-cover mr-4" src={app.applicant.profile_picture_url || `https://i.pravatar.cc/150?u=${app.applicant.id}`} alt={app.applicant.full_name} />
-                      <div>
-                        <p className="text-lg font-semibold text-indigo-600">{app.applicant.full_name}</p>
-                        <p className="text-sm text-gray-600">{app.applicant.student_profile?.major}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-6">
-                      <div className="text-center">
-                        <p className="text-xl font-bold text-green-600">{app.ai_match_score || '—'}</p>
-                        <p className="text-xs text-gray-500">Match Score</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-lg font-semibold capitalize">{app.status.replace(/_/g, ' ').toLowerCase()}</p>
-                        <p className="text-xs text-gray-500">Status</p>
-                      </div>
-                      <Button variant="outline" onClick={() => handleViewReport(app)} disabled={!app.resume?.id}>
-                        <BrainCircuit className="h-4 w-4 mr-2" />
-                        AI Report
-                      </Button>
-                      <Button variant="outline" onClick={() => handleViewInterviewReport(app.id)} disabled={app.status !== 'interview'}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Interview Report
-                      </Button>
-                      <button onClick={() => handleViewProfile(app.applicant.id)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-                        View Profile
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          {/* Add Table/Kanban toggle UI (table rendering to be implemented next) */}
+          <div className="flex justify-end mb-4">
+            <Button size="sm" variant={viewMode === 'kanban' ? 'default' : 'outline'} onClick={() => setViewMode('kanban')}>Kanban</Button>
+            <Button size="sm" variant={viewMode === 'table' ? 'default' : 'outline'} onClick={() => setViewMode('table')}>Table</Button>
           </div>
+
+          {viewMode === 'kanban' ? (
+            <div className="flex flex-wrap md:flex-nowrap gap-4 justify-center w-full overflow-x-auto">
+              {columns.map(status => (
+                <KanbanColumn
+                  key={status}
+                  status={status as keyof typeof statusConfig}
+                  applicants={applicants.filter(app => (app.status || '').toLowerCase() === status)}
+                  onViewDetails={app => setDetailsModal({ open: true, application: app })}
+                />
+              ))}
+            </div>
+          ) : (
+            <ApplicantTable 
+              applicants={applicants} 
+              onViewDetails={app => setDetailsModal({ open: true, application: app })}
+              handleViewProfile={handleViewProfile}
+              handleViewReport={handleViewReport}
+              handleViewInterviewReport={handleViewInterviewReport}
+            />
+          )}
+          <ApplicantDetailsModal
+            open={detailsModal.open}
+            onClose={() => setDetailsModal({ ...detailsModal, open: false })}
+            application={detailsModal.application}
+            onViewReport={handleViewReport}
+            onViewInterviewReport={handleViewInterviewReport}
+            onOffer={() => handlePipelineAction(detailsModal.application!, 'offered')}
+            onReject={() => handlePipelineAction(detailsModal.application!, 'rejected')}
+            jobId={jobId!}
+          />
         </div>
       </div>
       <CandidateProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         profile={selectedProfile}
+        onStatusUpdate={() => {}}
       />
       {selectedReport && (
         <CandidateMatchReportModal
             isOpen={!!selectedReport}
             onClose={() => setSelectedReport(null)}
             jobId={selectedReport.jobId}
-            candidateId={selectedReport.candidateId}
             resumeId={selectedReport.resumeId}
         />
       )}
@@ -307,5 +293,384 @@ export function EmployerJobApplicants() {
         />
       )}
     </>
+  );
+}
+
+// Helper to get absolute file URL for resume
+const getAbsoluteFileUrl = (fileUrl: string | undefined): string => {
+  if (!fileUrl) return '';
+  if (fileUrl.startsWith('http')) return fileUrl;
+  // Use VITE_API_URL or fallback to localhost:8000
+  const backendHost = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  return `${backendHost.replace(/\/$/, '')}${fileUrl}`;
+};
+
+function ApplicantDetailsModal({ open, onClose, application, onViewReport, onViewInterviewReport, onOffer, onReject, jobId }: {
+  open: boolean;
+  onClose: () => void;
+  application: Application | null;
+  onViewReport: (application: Application) => void;
+  onViewInterviewReport: (applicationId: string) => void;
+  onOffer: () => void;
+  onReject: () => void;
+  jobId: string;
+}) {
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pdfError, setPdfError] = useState(false);
+  const [showMatchReport, setShowMatchReport] = useState(false);
+  const [showInterviewReport, setShowInterviewReport] = useState(false);
+  const [studentProfile, setStudentProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  
+  useEffect(() => {
+    if (application?.applicant?.id && open) {
+      fetchStudentProfile(application.applicant.id);
+    }
+    // Reset PDF error state when modal opens/closes or application changes
+    setPdfError(false);
+    setNumPages(null);
+  }, [application, open]);
+  
+  const fetchStudentProfile = async (applicantId: string) => {
+    try {
+      setIsLoadingProfile(true);
+      setProfileError('');
+      const profile = await employerService.getCandidateProfile(applicantId);
+      setStudentProfile(profile);
+    } catch (error) {
+      console.error("Failed to fetch candidate profile", error);
+      setProfileError('Failed to load candidate profile details.');
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+  
+  if (!application) return null;
+  
+  const canOffer = application.status === 'interviewed';
+  const canReject = application.status === 'interviewed';
+  // Always use absolute URL for PDF (handles CORS/dev/prod)
+  const resumeUrl = getAbsoluteFileUrl(application.resume?.file_url);
+  const resumeName = application.resume?.file_name || 'Resume.pdf';
+  const resumeId = application.resume?.id;
+  const uploadDate = application.resume?.uploaded_at 
+    ? new Date(application.resume.uploaded_at).toLocaleDateString() 
+    : 'Not available';
+  
+  // Professional placeholder for missing data
+  const safe = (v: any, fallback = 'Not available') => (v ? v : fallback);
+  
+  // Function to handle PDF errors
+  const handlePdfError = () => {
+    console.error("Error loading PDF");
+    setPdfError(true);
+  };
+  
+  // Function to open PDF in new tab as fallback
+  const openPdfInNewTab = () => {
+    if (resumeUrl) {
+      window.open(resumeUrl, '_blank');
+    }
+  };
+  
+  return (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 ${open ? '' : 'hidden'}`}> 
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-0 relative max-h-[90vh] overflow-hidden flex flex-col">
+        <button className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl" onClick={onClose}>&times;</button>
+        
+        {/* Header */}
+        <div className="flex items-center gap-5 px-8 pt-8 pb-4 border-b bg-white">
+          <img className="h-16 w-16 rounded-full object-cover border-2 border-indigo-100" 
+               src={application.applicant.profile_picture_url || `https://i.pravatar.cc/150?u=${application.applicant.id}`} 
+               alt={application.applicant.full_name} />
+          <div className="flex-1 min-w-0">
+            <div className="text-xl font-bold text-gray-900 truncate">{safe(application.applicant.full_name)}</div>
+            <div className="text-gray-600 text-sm">Major: <span className="font-semibold">{safe(application.major)}</span></div>
+            <div className="text-xs text-gray-500 mt-1">Applied on {application.applied_at ? new Date(application.applied_at).toLocaleDateString() : 'Not available'}</div>
+          </div>
+          {application.ai_match_score != null && (
+            <Badge variant="secondary" className="flex items-center gap-1 text-green-700 bg-green-50 border-green-200 text-base px-3 py-1">
+              <Star className="h-5 w-5 mr-1 text-green-500" />
+              {application.ai_match_score}% Match
+            </Badge>
+          )}
+        </div>
+        
+        {/* Content */}
+        <div className="overflow-y-auto flex-1 p-8 bg-gray-50">
+          {isLoadingProfile ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+            </div>
+          ) : profileError ? (
+            <div className="text-center text-red-500 py-4">{profileError}</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left Column - Candidate Information */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">Candidate Information</h3>
+                <div className="space-y-4">
+                  {/* Contact Information */}
+                  <div className="bg-white rounded-lg border p-4 shadow-sm">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Contact</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                        <span className="text-sm text-gray-800">{safe(application.applicant.email)}</span>
+                      </div>
+                      {studentProfile?.user?.phone && (
+                        <div className="flex items-center">
+                          <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-800">{studentProfile.user.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Education */}
+                  <div className="bg-white rounded-lg border p-4 shadow-sm">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Education</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-500 w-24">University:</span>
+                        <span className="text-sm text-gray-800">{safe(studentProfile?.university?.name)}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-500 w-24">Major:</span>
+                        <span className="text-sm text-gray-800">{safe(application.major || studentProfile?.major)}</span>
+                      </div>
+                      {studentProfile?.graduation_year && (
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-gray-500 w-24">Graduating:</span>
+                          <span className="text-sm text-gray-800">{studentProfile.graduation_year}</span>
+                        </div>
+                      )}
+                      {studentProfile?.gpa && (
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-gray-500 w-24">GPA:</span>
+                          <span className="text-sm text-gray-800">{studentProfile.gpa}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Skills */}
+                  {studentProfile?.skills && studentProfile.skills.length > 0 && (
+                    <div className="bg-white rounded-lg border p-4 shadow-sm">
+                      <h4 className="text-sm font-medium text-gray-500 mb-2">Skills</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {studentProfile.skills.map((skill: any, index: number) => (
+                          <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {typeof skill === 'string' ? skill : skill.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Interests */}
+                  {studentProfile?.interests && studentProfile.interests.length > 0 && (
+                    <div className="bg-white rounded-lg border p-4 shadow-sm">
+                      <h4 className="text-sm font-medium text-gray-500 mb-2">Interests</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {studentProfile.interests.map((interest: any, index: number) => (
+                          <Badge key={index} variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                            {typeof interest === 'string' ? interest : interest.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Application Status */}
+                  <div className="bg-white rounded-lg border p-4 shadow-sm">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Application Status</h4>
+                    <div className="flex items-center">
+                      <Badge className="bg-indigo-100 text-indigo-700">
+                        {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - Resume and Reports */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">Resume</h3>
+                <div className="bg-white rounded-lg p-3 border mb-4 shadow-sm flex flex-col items-center justify-center min-h-[180px]">
+                  {resumeUrl ? (
+                    <Button variant="outline" onClick={() => setShowResumeModal(true)}>
+                      <FileText className="h-4 w-4 mr-2" />View Resume
+                    </Button>
+                  ) : (
+                    <div className="text-gray-400 text-center py-8">No CV uploaded.</div>
+                  )}
+                </div>
+
+                {/* Resume Details */}
+                {application.resume && (
+                  <div className="bg-white rounded-lg border p-4 shadow-sm mb-4">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Resume Details</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-500 w-24">Filename:</span>
+                        <span className="text-sm text-gray-800">{safe(application.resume.file_name)}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-500 w-24">Uploaded:</span>
+                        <span className="text-sm text-gray-800">{uploadDate}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowMatchReport(true)} 
+                    disabled={!jobId || !resumeId}
+                    className="w-full flex items-center justify-center bg-white"
+                  >
+                    <BrainCircuit className="h-4 w-4 mr-2" />AI Match Report
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowInterviewReport(true)} 
+                    disabled={application.status !== 'interviewed'}
+                    className="w-full flex items-center justify-center bg-white"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />AI Interview Report
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Footer with Offer/Reject buttons */}
+        <div className="border-t px-8 py-4 flex justify-between bg-white">
+          <Button variant="destructive" disabled={!canReject} onClick={onReject} className="px-6">Reject</Button>
+          <Button variant="success" disabled={!canOffer} onClick={onOffer} className="px-6">Make Offer</Button>
+        </div>
+        
+        {/* AI Match Report Modal */}
+        {showMatchReport && jobId && resumeId && (
+          <CandidateMatchReportModal
+            isOpen={showMatchReport}
+            onClose={() => setShowMatchReport(false)}
+            jobId={jobId}
+            resumeId={resumeId}
+          />
+        )}
+        {/* Interview Report Modal */}
+        {showInterviewReport && (
+          <ViewInterviewReportModal
+            isOpen={showInterviewReport}
+            onClose={() => setShowInterviewReport(false)}
+            applicationId={application.id}
+          />
+        )}
+        
+        {/* Resume Preview Dialog */}
+        {/* <ResumePreviewDialog
+          open={showResumeModal}
+          onClose={() => setShowResumeModal(false)}
+          resumeUrl={resumeUrl}
+        /> */}
+      </div>
+      {/* Move ResumePreviewDialog here, as a sibling to the modal, not a child */}
+      <ResumePreviewDialog
+        open={showResumeModal}
+        onClose={() => setShowResumeModal(false)}
+        resumeUrl={resumeUrl}
+      />
+    </div>
+  );
+}
+
+function ApplicantCardCompact({ application, onViewDetails }: { application: Application; onViewDetails: () => void }) {
+  // Professional placeholder for missing data
+  const safe = (v: any, fallback = 'Not specified') => (v ? v : fallback);
+  
+  return (
+    <Card 
+      className="hover:shadow-md transition-shadow duration-200 cursor-pointer relative bg-white"
+      onClick={onViewDetails}
+    >
+      <div className="flex items-center gap-2 p-2 bg-white rounded-lg">
+        <img
+          className="h-8 w-8 rounded-full object-cover border border-indigo-100"
+          src={application.applicant.profile_picture_url || `https://i.pravatar.cc/150?u=${application.applicant.id}`}
+          alt={application.applicant.full_name || 'Applicant'}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-gray-900 truncate text-sm">{safe(application.applicant.full_name)}</div>
+          <div className="text-xs text-gray-500 truncate">{safe(application.major, 'No major')}</div>
+          <div className="text-xs text-gray-400">
+            {application.applied_at ? new Date(application.applied_at).toLocaleDateString() : 'Date unavailable'}
+          </div>
+        </div>
+        {application.ai_match_score != null && (
+          <div className="absolute top-1 right-1">
+            <Badge variant="secondary" className="flex items-center text-xs text-green-700 bg-green-50 border-green-200">
+              <Star className="h-3 w-3 mr-0.5 text-green-500" />
+              {application.ai_match_score}%
+            </Badge>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+} 
+
+// Dialog component for resume preview
+function ResumePreviewDialog({ 
+  open, 
+  onClose, 
+  resumeUrl 
+}: { 
+  open: boolean; 
+  onClose: () => void; 
+  resumeUrl: string;
+}) {
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pdfError, setPdfError] = useState(false);
+
+  const handlePdfError = () => {
+    setPdfError(true);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl w-[95vw] p-4 relative overflow-y-auto max-h-[90vh] bg-white">
+        <DialogTitle className="sr-only">Resume Preview</DialogTitle>
+        <DialogDescription className="sr-only">Preview of the candidate's uploaded resume in PDF format.</DialogDescription>
+        <button className="absolute top-2 right-2 p-1 text-gray-400 hover:text-indigo-600" onClick={() => onClose()} aria-label="Close resume preview">
+          <svg width="26" height="26" viewBox="0 0 20 20" fill="none"><path d="M6 6l8 8M6 14L14 6" stroke="currentColor" strokeWidth="2" /></svg>
+        </button>
+        {resumeUrl && (
+          <Document
+            file={resumeUrl}
+            loading={<p className="text-center py-6 text-lg">Loading preview…</p>}
+            onLoadError={handlePdfError}
+            onSourceError={handlePdfError}
+            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+          >
+            {numPages && Array.from({ length: numPages }, (_, i) => (
+              <Page key={i + 1} pageNumber={i + 1} width={700} className="mx-auto mb-5 border rounded bg-white" />
+            ))}
+          </Document>
+        )}
+        {pdfError && (
+          <div className="mt-6 text-center text-red-500">
+            <FileText className="inline-block mr-1" />
+            Unable to display preview. File may be corrupted.
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 } 

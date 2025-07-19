@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import api from '../../lib/axios';
 import { employerService } from '../../services/employerService';
+import { useNavigate } from 'react-router-dom';
 
 export function EmployerDashboard() {
   const [profile, setProfile] = useState<any>(null);
@@ -27,6 +28,7 @@ export function EmployerDashboard() {
   const [pipelineStats, setPipelineStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -99,10 +101,10 @@ export function EmployerDashboard() {
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold text-gray-900">
                 Employer Dashboard
               </h1>
-              <p className="mt-2 text-lg text-gray-600">
+              <p className="mt-2 text-base text-gray-600">
                 Welcome back, {profile?.company_name || 'Employer'}!
               </p>
               <p className="text-sm text-gray-500 mt-1">
@@ -110,11 +112,17 @@ export function EmployerDashboard() {
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <button className="inline-flex items-center px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200">
+              <button
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 hover:border-indigo-300 transition-all duration-200"
+                onClick={() => navigate('/employer/settings/profile')}
+              >
                 <Building className="h-4 w-4 mr-2" />
                 View Company Profile
               </button>
-              <button className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-md">
+              <button
+                className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-md"
+                onClick={() => navigate('/employer/jobs?create=1')}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Post New Job
               </button>
@@ -171,7 +179,7 @@ export function EmployerDashboard() {
             className="lg:col-span-2 bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
           >
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                 <Star className="h-6 w-6 mr-3 text-yellow-500" />
                 Top Candidates
               </h2>
@@ -246,7 +254,7 @@ export function EmployerDashboard() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center">
+            <h2 className="text-lg font-semibold text-gray-900 mb-8 flex items-center">
               <Clock className="h-6 w-6 mr-3 text-indigo-600" />
               Recent Activity
             </h2>
@@ -293,7 +301,7 @@ export function EmployerDashboard() {
             transition={{ delay: 0.2 }}
             className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center">
+            <h2 className="text-lg font-semibold text-gray-900 mb-8 flex items-center">
               <BarChart2 className="h-6 w-6 mr-3 text-indigo-600" />
               Hiring Pipeline
             </h2>
@@ -341,7 +349,7 @@ export function EmployerDashboard() {
             transition={{ delay: 0.3 }}
             className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center">
+            <h2 className="text-lg font-semibold text-gray-900 mb-8 flex items-center">
               <TrendingUp className="h-6 w-6 mr-3 text-indigo-600" />
               Time to Hire
             </h2>
@@ -432,7 +440,7 @@ const EnhancedStatCard: React.FC<EnhancedStatCardProps> = ({
         )}
       </div>
       <div className="mb-2">
-        <p className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</p>
+        <p className="text-2xl font-bold text-gray-900">{value.toLocaleString()}</p>
         <p className="text-lg font-semibold text-gray-700">{name}</p>
       </div>
       <p className="text-sm text-gray-500">{description}</p>

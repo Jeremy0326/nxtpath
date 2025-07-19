@@ -6,7 +6,7 @@ from django.utils import timezone
 from jobs.services.embedding_service import embedding_service
 from accounts.models import StudentProfile
 from jobs.models import Application
-from accounts.serializers import UniversitySerializer
+from accounts.serializers import UniversitySerializer, ResumeSerializer
 
 class EmployerJobSerializer(serializers.ModelSerializer):
     skills = SkillSerializer(many=True, read_only=True)
@@ -131,9 +131,16 @@ class ApplicationSerializer(serializers.ModelSerializer):
     applicant = UserSerializer(read_only=True)
     job = ApplicantJobSerializer(read_only=True)
     ai_match_score = serializers.IntegerField(read_only=True)
+    major = serializers.SerializerMethodField()
+    resume = ResumeSerializer(read_only=True)
 
     class Meta:
         model = Application
         fields = [
-            'id', 'applicant', 'job', 'status', 'applied_at', 'ai_match_score', 'resume'
-        ] 
+            'id', 'applicant', 'job', 'status', 'applied_at', 'ai_match_score', 'resume', 'major'
+        ]
+
+    def get_major(self, obj):
+        # Defensive: applicant may not have a student_profile
+        student_profile = getattr(obj.applicant, 'student_profile', None)
+        return getattr(student_profile, 'major', None) if student_profile else None 

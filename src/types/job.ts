@@ -104,12 +104,13 @@ export interface Application {
   applicant: Applicant;
   job: Job;
   status: 'applied' | 'interviewed' | 'offered' | 'rejected';
-  created_at: string;
+  applied_at: string;
   updated_at: string;
   ai_match_score?: number;
   interview_id?: string;
   interview_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'ERROR';
   resume?: Resume; // The specific resume used for this application
+  major?: string | null;
 }
 
 // Alias for backward compatibility

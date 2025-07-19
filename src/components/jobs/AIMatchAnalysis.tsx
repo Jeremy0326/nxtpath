@@ -363,102 +363,174 @@ function ConclusionSectionStudent({ data }: { data: GroupedMatchReport['student_
 }
 
 function ConclusionSectionEmployer({ data }: { data: GroupedMatchReport['employer_view'] }) {
+  const [openSections, setOpenSections] = useState({
+    riskFlags: false,
+    opportunityFlags: false,
+    recommendations: false,
+    fitSummary: false,
+    followUpQuestions: false
+  });
+
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   return (
-    <Card className="mt-4 border-t-4 border-t-purple-500 shadow-sm">
+    <Card className="mt-4 border-t-4 border-t-purple-500 shadow-sm bg-white">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-purple-700">
           <Building className="h-5 w-5" />
           Recruiter Assessment
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 overflow-visible">
         {/* Risk Flags */}
         {data.risk_flags.length > 0 && (
-          <div>
-            <h4 className="font-medium mb-3 text-red-700 flex items-center gap-1.5">
-              <AlertTriangle className="h-4 w-4" />
-              Risk Flags
-            </h4>
-            <div className="space-y-2.5">
-              {data.risk_flags.map((risk, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50">
-                  <AlertTriangle className="h-4 w-4 text-red-600 mt-1" />
-                  <div>
-                    <div className="font-medium text-red-800">{risk.title}</div>
-                    <div className="text-sm text-red-700 mt-1">{risk.description}</div>
-                  </div>
-                </div>
-              ))}
+          <div className="bg-white border rounded-lg shadow-sm">
+            <div 
+              className="p-3 flex items-center justify-between cursor-pointer border-b" 
+              onClick={() => toggleSection('riskFlags')}
+            >
+              <h4 className="font-medium text-red-700 flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4" />
+                Risk Flags
+              </h4>
+              <button type="button" className="text-gray-500 hover:text-gray-700" aria-label="Toggle risk flags">
+                {openSections.riskFlags ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </button>
             </div>
+            {openSections.riskFlags && (
+              <div className="p-3 space-y-2.5 bg-white">
+                {data.risk_flags.map((risk, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-red-200 bg-red-50">
+                    <AlertTriangle className="h-4 w-4 text-red-600 mt-1" />
+                    <div>
+                      <div className="font-medium text-red-800">{risk.title}</div>
+                      <div className="text-sm text-red-700 mt-1">{risk.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         
         {/* Opportunity Flags */}
         {data.opportunity_flags.length > 0 && (
-          <div>
-            <h4 className="font-medium mb-3 text-green-700 flex items-center gap-1.5">
-              <CheckCircle className="h-4 w-4" />
-              Opportunity Flags
-            </h4>
-            <div className="space-y-2.5">
-              {data.opportunity_flags.map((opp, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-green-200 bg-green-50">
-                  <CheckCircle className="h-4 w-4 text-green-600 mt-1" />
-                  <div>
-                    <div className="font-medium text-green-800">{opp.title}</div>
-                    <div className="text-sm text-green-700 mt-1">{opp.description}</div>
-                  </div>
-                </div>
-              ))}
+          <div className="bg-white border rounded-lg shadow-sm">
+            <div 
+              className="p-3 flex items-center justify-between cursor-pointer border-b" 
+              onClick={() => toggleSection('opportunityFlags')}
+            >
+              <h4 className="font-medium text-green-700 flex items-center gap-1.5">
+                <CheckCircle className="h-4 w-4" />
+                Opportunity Flags
+              </h4>
+              <button type="button" className="text-gray-500 hover:text-gray-700" aria-label="Toggle opportunity flags">
+                {openSections.opportunityFlags ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </button>
             </div>
+            {openSections.opportunityFlags && (
+              <div className="p-3 space-y-2.5 bg-white">
+                {data.opportunity_flags.map((opp, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-green-200 bg-green-50">
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-1" />
+                    <div>
+                      <div className="font-medium text-green-800">{opp.title}</div>
+                      <div className="text-sm text-green-700 mt-1">{opp.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         
         {/* Recruiter Recommendations */}
         {data.recruiter_recommendations.length > 0 && (
-          <div>
-            <h4 className="font-medium mb-3 text-gray-800 flex items-center gap-1.5">
-              <BarChart4 className="h-4 w-4 text-blue-600" />
-              Recruiter Recommendations
-            </h4>
-            <div className="space-y-2.5">
-              {data.recruiter_recommendations.map((rec, i) => (
-                <div key={i} className="p-3 rounded border hover:shadow-sm transition-all duration-200">
-                  <div className="font-medium text-gray-800">{rec.title}</div>
-                  <div className="text-sm text-gray-600 mt-1">{rec.description}</div>
-                </div>
-              ))}
+          <div className="bg-white border rounded-lg shadow-sm">
+            <div 
+              className="p-3 flex items-center justify-between cursor-pointer border-b" 
+              onClick={() => toggleSection('recommendations')}
+            >
+              <h4 className="font-medium text-gray-800 flex items-center gap-1.5">
+                <BarChart4 className="h-4 w-4 text-blue-600" />
+                Recruiter Recommendations
+              </h4>
+              <button type="button" className="text-gray-500 hover:text-gray-700" aria-label="Toggle recommendations">
+                {openSections.recommendations ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </button>
             </div>
+            {openSections.recommendations && (
+              <div className="p-3 space-y-2.5 bg-white">
+                {data.recruiter_recommendations.map((rec, i) => (
+                  <div key={i} className="p-3 rounded border hover:shadow-sm transition-all duration-200 bg-white">
+                    <div className="font-medium text-gray-800">{rec.title}</div>
+                    <div className="text-sm text-gray-600 mt-1">{rec.description}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         
         {/* Bottom Section with Fit Summary and Follow-up Questions */}
-        <div className="grid grid-cols-1 gap-4 pt-2">
-        {/* Fit Summary */}
-        {data.fit_summary && (
-            <div className="p-4 bg-slate-50 rounded-lg border flex items-start gap-2">
-              <User className="h-5 w-5 text-slate-600 mt-0.5" />
-              <div>
-                <div className="text-sm font-medium text-slate-800 mb-1">Fit Summary</div>
-                <div className="text-sm text-slate-700">{data.fit_summary}</div>
+        <div className="grid grid-cols-1 gap-4">
+          {/* Fit Summary */}
+          {data.fit_summary && (
+            <div className="bg-white border rounded-lg shadow-sm">
+              <div 
+                className="p-3 flex items-center justify-between cursor-pointer border-b" 
+                onClick={() => toggleSection('fitSummary')}
+              >
+                <h4 className="font-medium text-slate-800 flex items-center gap-1.5">
+                  <User className="h-4 w-4 text-slate-600" />
+                  Fit Summary
+                </h4>
+                <button type="button" className="text-gray-500 hover:text-gray-700" aria-label="Toggle fit summary">
+                  {openSections.fitSummary ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </button>
               </div>
-          </div>
-        )}
-          
-        {/* Follow-up Questions */}
-        {data.follow_up_questions.length > 0 && (
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="font-medium mb-2 text-blue-800">Follow-up Questions</h4>
-              <div className="space-y-2">
-              {data.follow_up_questions.map((question, i) => (
-                <div key={i} className="flex items-start gap-2">
-                    <span className="text-blue-500 font-bold mt-0.5">{i + 1}.</span>
-                    <div className="text-sm text-blue-700">{question}</div>
+              {openSections.fitSummary && (
+                <div className="p-4 bg-white">
+                  <div className="text-sm text-slate-700">{data.fit_summary}</div>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        )}
+          )}
+          
+          {/* Follow-up Questions */}
+          {data.follow_up_questions.length > 0 && (
+            <div className="bg-white border rounded-lg shadow-sm">
+              <div 
+                className="p-3 flex items-center justify-between cursor-pointer border-b" 
+                onClick={() => toggleSection('followUpQuestions')}
+              >
+                <h4 className="font-medium text-blue-800 flex items-center gap-1.5">
+                  <Target className="h-4 w-4 text-blue-600" />
+                  Follow-up Questions
+                </h4>
+                <button type="button" className="text-gray-500 hover:text-gray-700" aria-label="Toggle follow-up questions">
+                  {openSections.followUpQuestions ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                </button>
+              </div>
+              {openSections.followUpQuestions && (
+                <div className="p-4 bg-white">
+                  <div className="space-y-2">
+                    {data.follow_up_questions.map((question, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-blue-500 font-bold mt-0.5">{i + 1}.</span>
+                        <div className="text-sm text-blue-700">{question}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

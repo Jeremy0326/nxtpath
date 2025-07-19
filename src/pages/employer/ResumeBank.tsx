@@ -162,6 +162,7 @@ export function ResumeBank() {
             isOpen={isProfileModalOpen}
             onClose={() => setIsProfileModalOpen(false)}
             profile={selectedProfile}
+            context="resume-bank"
         />
       )}
     </>

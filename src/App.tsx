@@ -7,7 +7,6 @@ import { JobApplicationPage } from './pages/jobs/JobApplicationPage';
 import { JobTracker } from './pages/student/JobTracker';
 import { InterviewPage } from './pages/student/InterviewPage';
 import { CareerFairPage } from './pages/student/CareerFairPage';
-import { PostFairPage } from './pages/student/PostFairPage';
 import { ResumeManagement } from './pages/student/ResumeManagement';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { FindMentorsPage } from './pages/student/FindMentorsPage';
@@ -67,7 +66,6 @@ function AppRoutes() {
                   <Route path="interview/:applicationId" element={<InterviewPage />} />
                   <Route path="career-fairs" element={<CareerFairListPage />} />
                   <Route path="career-fairs/:fairId" element={<CareerFairPage />} />
-                  <Route path="career-fairs/:fairId/follow-up" element={<PostFairPage />} />
                   <Route path="career-fairs/list" element={<Navigate to="/student/career-fairs" replace />} />
                   <Route path="portfolio" element={<StudentProfile />} />
                   <Route path="resume" element={<ResumeManagement />} />
