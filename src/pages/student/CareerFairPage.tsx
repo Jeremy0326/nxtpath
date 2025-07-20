@@ -22,9 +22,9 @@ import { CompanyCard } from '../../components/career-fair/CompanyCard';
 import { FloorMap } from '../../components/career-fair/FloorMap';
 import { FairItinerary } from '../../components/career-fair/FairItinerary';
 import { careerFairService } from '../../services/careerFairService';
-import { CareerFair } from '../../types/career-fair';
+import type { FrontendCareerFair } from '../../types/components';
 import { Loader2 } from 'lucide-react';
-import { Company as ApiCompany } from '../../types/job';
+import { Company } from '../../types/models';
 
 interface DisplayCompany {
   id: string;
@@ -43,7 +43,7 @@ interface DisplayCompany {
 
 export function CareerFairPage() {
   const { fairId } = useParams<{ fairId: string }>();
-  const [fair, setFair] = useState<CareerFair | null>(null);
+  const [fair, setFair] = useState<FrontendCareerFair | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<DisplayCompany | null>(null);
@@ -85,7 +85,7 @@ export function CareerFairPage() {
   };
 
   const handleViewJob = (jobId: string) => {
-    navigate(`/jobs?jobId=${jobId}`);
+    navigate(`/student/jobs`);
   };
 
   const handleMessageRecruiter = (companyId: string) => {
@@ -116,7 +116,7 @@ export function CareerFairPage() {
     );
   }
 
-  const filteredBooths = fair.booths.filter(booth => {
+  const filteredBooths = fair.booths?.filter(booth => {
     const company = booth.company;
     const matchesSearch =
       company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -506,15 +506,7 @@ export function CareerFairPage() {
                     Close
                   </button>
                   
-                  <div className="flex space-x-3">
-                    <Link
-                      to={`/jobs?companyId=${selectedCompany.id}`}
-                      className="flex items-center px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-all"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-1.5" />
-                      Browse All Jobs
-                    </Link>
-                    
+                  <div className="flex space-x-3">                    
                     <button
                       onClick={() => {/* Add to itinerary logic */}}
                       className="flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"

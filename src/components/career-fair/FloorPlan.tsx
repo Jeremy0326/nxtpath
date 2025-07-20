@@ -36,7 +36,7 @@ export function FloorPlan({ fair }: FloorPlanProps) {
             className="absolute flex items-center justify-center bg-white rounded-lg shadow-md p-2 border-2 border-indigo-500"
           >
             <div className="text-center">
-                <img src={booth.company.logo_url || 'https://via.placeholder.com/50'} alt={booth.company.name} className="h-10 w-10 rounded-full object-contain mx-auto mb-2"/>
+                <img src={booth.company.logo_url || '/placeholder.svg'} alt={booth.company.name} className="h-10 w-10 rounded-full object-contain mx-auto mb-2"/>
                 <p className="text-xs font-bold">{booth.label}</p>
                 <p className="text-xs text-gray-600">{booth.company.name}</p>
             </div>

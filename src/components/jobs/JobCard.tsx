@@ -3,17 +3,17 @@ import { motion } from 'framer-motion';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Bookmark, Briefcase, MapPin, DollarSign, Building, Clock, CheckCircle } from 'lucide-react';
-import type { Job } from '@/types';
+import type { ExtendedJob } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { useAiMatchReportStore } from '@/stores/aiMatchReportStore';
 
 export interface JobCardProps {
-  job: Job;
+  job: ExtendedJob;
   isSaved: boolean;
   isSelected: boolean;
-  onSelect: (job: Job) => void;
-  onSave: (job: Job) => void;
-  onApply: (job: Job) => void;
+  onSelect: (job: ExtendedJob) => void;
+  onSave: (job: ExtendedJob) => void;
+  onApply: (job: ExtendedJob) => void;
 }
 
 export function JobCard({ job, isSaved, isSelected, onSelect, onSave, onApply }: JobCardProps) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import api from '../../services/api';
+import api from '../../lib/axios';
 
 export function EmailVerificationPage() {
   const { uidb64, token } = useParams<{ uidb64: string; token: string }>();

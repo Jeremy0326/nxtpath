@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Calendar, Building, Users, MapPin, Clock, ChevronRight } from 'lucide-react';
 import { careerFairService } from '../../services/careerFairService';
-import { CareerFair } from '../../types/career-fair';
+import type { FrontendCareerFair } from '../../types/components';
 import { colors, componentStyles, typography, layout } from '../../lib/design-system';
 
 export function CareerFairListPage() {
-  const [fairs, setFairs] = useState<CareerFair[]>([]);
+  const [fairs, setFairs] = useState<FrontendCareerFair[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -64,16 +64,16 @@ export function CareerFairListPage() {
     <div className="min-h-screen bg-gray-50/50">
       {/* Page Header */}
       <div className={`bg-white border-b border-gray-100 mb-6`}>
-        <div className={`${layout.container} py-8`}>
-          <div className="mb-2">
-            <h1 className={`${typography.fontSize['3xl']} font-bold text-gray-900`}>Career Fairs</h1>
-            <p className="text-gray-500 mt-1">Discover upcoming virtual career fairs and connect with top employers</p>
+        <div className={`${layout.container} py-12`}>
+          <div className="mb-4">
+            <h1 className={`text-4xl font-bold text-gray-900 mb-3`}>Career Fairs</h1>
+            <p className="text-lg text-gray-600">Discover upcoming virtual career fairs and connect with top employers</p>
           </div>
           
-          <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mt-8">
             <div className="flex items-center space-x-4">
               <div className={`${componentStyles.badge.base} ${componentStyles.badge.variants.indigo} flex items-center`}>
-                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                <Calendar className="h-4 w-4 mr-2" />
                 {fairs.length} Upcoming Events
               </div>
             </div>
@@ -124,7 +124,7 @@ export function CareerFairListPage() {
                   <div className={`${componentStyles.card.base} ${componentStyles.card.hover} h-full flex flex-col overflow-hidden`}>
                     <div className="relative h-48 overflow-hidden">
                       <img 
-                        src={fair.banner_image_url || 'https://via.placeholder.com/400x200?text=Career+Fair'} 
+                        src={fair.banner_image_url || '/placeholder.svg'} 
                         alt={fair.title} 
                         className="w-full h-full object-cover"
                       />
@@ -172,7 +172,7 @@ export function CareerFairListPage() {
                     
                     <div className={`${componentStyles.card.footer} flex items-center justify-between`}>
                       <span className="text-xs text-gray-500">
-                        {fair.location.toLowerCase().includes('virtual') ? 'Virtual Event' : 'In-Person Event'}
+                        {fair.location?.toLowerCase().includes('virtual') ? 'Virtual Event' : 'In-Person Event'}
                       </span>
                       <span className="text-sm text-indigo-600 font-medium flex items-center group">
                         View Details

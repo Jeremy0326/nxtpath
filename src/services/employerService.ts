@@ -80,6 +80,26 @@ class EmployerService {
     return response.data;
   }
 
+  async sendConnection(studentId: string, message?: string): Promise<any> {
+    const response = await api.post('/employer/connections/', {
+      student_id: studentId,
+      message: message || ''
+    });
+    return response.data;
+  }
+
+  async getConnections(): Promise<any[]> {
+    const response = await api.get('/employer/connections/');
+    return response.data;
+  }
+
+  async updateConnection(connectionId: string, action: 'accept' | 'reject' | 'withdraw'): Promise<any> {
+    const response = await api.patch(`/employer/connections/${connectionId}/action/`, {
+      action
+    });
+    return response.data;
+  }
+
   async getAllCandidates(params: { search?: string, status?: string, job_id?: string }): Promise<Candidate[]> {
     const response = await api.get('/employer/candidates/', { params });
     return response.data;

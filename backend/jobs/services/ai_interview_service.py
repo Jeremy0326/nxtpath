@@ -38,19 +38,19 @@ class InterviewService:
     def submit_answer_and_get_next_question(self, interview: AIInterview, answer: Dict[str, Any]) -> AIInterview:
         """
         Appends the current answer and generates the next dynamic question.
-        Now always generates exactly  5 questions, one by one, for a conversational interview.
+        Now always generates exactly 3 questions, one by one, for a conversational interview.
         """
         # 1. Save the current answer
         answers = interview.answers or []
         answers.append(answer)
         interview.answers = answers
 
-        # 2. Check if the interview should end (after 5 questions)
-        if len(interview.questions) >= 5:
+        # 2. Check if the interview should end (after 3 questions)
+        if len(interview.questions) >= 3:
             interview.status = AIInterview.Status.COMPLETED
             interview.completed_at = timezone.now()
             interview.save()
-            logger.info(f"AI Interview {interview.id} completed after 5 questions.")
+            logger.info(f"AI Interview {interview.id} completed after 3 questions.")
             # --- Enhancement: Automatically generate AIInterviewReport ---
             try:
                 from .ai_interview_service import AIInterviewService
@@ -104,7 +104,7 @@ You are an expert technical interviewer continuing a conversation. Based on the 
 - The question should probe deeper into the candidate's last answer or explore a related area of the job's requirements.
 - Do not repeat previous questions.
 - Keep the conversation focused on assessing the candidate's fit for this specific role.
-- Total interview length should be around 7 questions. This is question number {len(previous_qa) + 1}.
+- Total interview length should be around 3 questions. This is question number {len(previous_qa) + 1}.
 
 JOB: {job.title}
 RESUME: CV highlights provided.
@@ -142,9 +142,9 @@ JSON Output:
             interview.report_generated = True
             interview.save(update_fields=['report_generated'])
 
-        # Update application status to AI_INTERVIEW_COMPLETED if not already
-        if application.status != Application.Status.AI_INTERVIEW_COMPLETED:
-            application.status = Application.Status.AI_INTERVIEW_COMPLETED
+        # Update application status to INTERVIEWED if not already
+        if application.status != Application.Status.INTERVIEWED:
+            application.status = Application.Status.INTERVIEWED
             application.save(update_fields=['status'])
 
         return report
@@ -234,6 +234,13 @@ Instructions:
         )
         interview.report_generated = True
         interview.save(update_fields=['report_generated'])
+        
+        # Update application status to INTERVIEWED
+        application = interview.application
+        if application.status != Application.Status.INTERVIEWED:
+            application.status = Application.Status.INTERVIEWED
+            application.save(update_fields=['status'])
+        
         return report
 
 ai_interview_service = AIInterviewService() 

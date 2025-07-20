@@ -4,10 +4,10 @@ import {
   Plus, Search, Filter, Settings, MoreVertical, Users, MapPin, Briefcase, Calendar, Edit, Trash2, Eye, List, LayoutGrid, BarChart3, ChevronRight
 } from 'lucide-react';
 import { employerService } from '../../services/employerService';
-import { JobFormModal } from '../../components/employer/jobs/JobFormModal';
-import { JobMatchingWeightage } from '../../components/employer/jobs/JobMatchingWeightage';
+import { JobFormModal } from '../../components/employer/JobFormModal';
+import { JobMatchingWeightage } from '../../components/employer/JobMatchingWeightage';
 import { useToast } from '../../hooks/useToast';
-import type { Job } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 import { Link } from 'react-router-dom';
 
 type ViewMode = 'list' | 'grid';

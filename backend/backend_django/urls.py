@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/', include('jobs.urls')),
     path('api/employer/', include('employer.urls')),
     path('api/career-fairs/', include('career_fairs.urls')),
+    path('api/', include('accounts.urls')),
     path('api/register/', RegisterView.as_view(), name='register'),
     path('api/user/', UserDetailView.as_view(), name='user-detail'),
     path('api/profile/', ProfileView.as_view(), name='profile'),

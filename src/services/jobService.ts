@@ -1,5 +1,5 @@
 import api from '../lib/axios';
-import type { Job, Skill } from '../types/job';
+import type { Job, Skill } from '../types/models';
 import { PaginatedResponse } from '../types';
 import type { GroupedMatchReport } from '../types';
 
@@ -344,31 +344,39 @@ class JobService {
     return response.data;
   }
 
-  async getInterviewReport(applicationId: string): Promise<any> {
-    // Always use the new endpoint for AI interview reports
-    const url = `applications/${applicationId}/ai-interview-report/`;
-    const response = await api.get(url);
-    // Flatten all fields for frontend
-    if (response.data) {
-      return {
-        id: response.data.id,
-        summary: response.data.report_data?.summary,
-        strengths: response.data.report_data?.strengths,
-        weaknesses: response.data.report_data?.weaknesses,
-        fit_score: response.data.report_data?.fit_score,
-        culture_fit_score: response.data.report_data?.culture_fit_score,
-        communication_score: response.data.report_data?.communication_score,
-        technical_depth_score: response.data.report_data?.technical_depth_score,
-        suggested_next_step: response.data.report_data?.suggested_next_step,
-        rationale: response.data.report_data?.rationale,
-        follow_up_questions: response.data.report_data?.follow_up_questions,
-        version: response.data.report_version,
-        model_name: response.data.model_name,
-        overall_score: response.data.overall_score,
-        created_at: response.data.created_at,
-      };
+  async getInterviewReport(applicationId: string, audience?: string): Promise<any> {
+    // Use the appropriate endpoint based on audience
+    let url: string;
+    if (audience === 'employer') {
+      url = `employer/applications/${applicationId}/report/`;
+    } else {
+      url = `applications/${applicationId}/ai-interview-report/`;
     }
-    return response.data;
+    
+    const response = await api.get(url);
+    return this.flattenReportData(response.data);
+  }
+
+  private flattenReportData(data: any): any {
+    if (!data) return data;
+    
+    return {
+      id: data.id,
+      summary: data.report_data?.summary,
+      strengths: data.report_data?.strengths,
+      weaknesses: data.report_data?.weaknesses,
+      fit_score: data.report_data?.fit_score,
+      culture_fit_score: data.report_data?.culture_fit_score,
+      communication_score: data.report_data?.communication_score,
+      technical_depth_score: data.report_data?.technical_depth_score,
+      suggested_next_step: data.report_data?.suggested_next_step,
+      rationale: data.report_data?.rationale,
+      follow_up_questions: data.report_data?.follow_up_questions,
+      version: data.report_version,
+      model_name: data.model_name,
+      overall_score: data.overall_score,
+      created_at: data.created_at,
+    };
   }
 
   /**

@@ -2,8 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Layout } from './components/layout/Layout';
 import { EmployerLayout } from './components/layout/EmployerLayout';
 import { StudentDashboard } from './pages/student/StudentDashboard';
-import { JobSearchPage } from './pages/jobs/JobSearchPage';
-import { JobApplicationPage } from './pages/jobs/JobApplicationPage';
+import { JobSearchPage } from './pages/student/JobSearchPage';
+import { JobApplicationPage } from './pages/student/JobApplicationPage';
 import { JobTracker } from './pages/student/JobTracker';
 import { InterviewPage } from './pages/student/InterviewPage';
 import { CareerFairPage } from './pages/student/CareerFairPage';
@@ -13,30 +13,34 @@ import { FindMentorsPage } from './pages/student/FindMentorsPage';
 import { UniversityDashboard } from './pages/university/UniversityDashboard';
 import { EmployerDashboard } from './pages/employer/EmployerDashboard';
 import { CareerFairProvider } from './contexts/CareerFairContext';
-import { EmployerFeedback } from "./pages/university/EmployerFeedback";
-import { CareerFairOversight } from "./pages/university/CareerFairOversight";
-import { RegistrationManagement } from "./pages/university/RegistrationManagement";
+import CareerFairOversight from "./pages/university/CareerFairOversight";
 import { EmployerJobs } from "./pages/employer/EmployerJobs";
-import { EmployerJobApplicants } from './pages/employer/jobs/EmployerJobApplicants';
+import { EmployerJobApplicants } from './pages/employer/EmployerJobApplicants';
 import { CandidatesKanbanPage } from './pages/employer/CandidatesKanbanPage';
 import { ResumeBank } from "./pages/employer/ResumeBank";
-import { CompanyProfile } from "./pages/employer/settings/CompanyProfile";
-import { TeamMembers } from "./pages/employer/settings/TeamMembers";
+import { CompanyProfile } from "./pages/employer/CompanyProfile";
+import { TeamMembers } from "./pages/employer/TeamMembers";
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { PasswordResetRequest } from './components/auth/PasswordResetRequest';
 import { PasswordResetConfirm } from './components/auth/PasswordResetConfirm';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
-import { LandingPage } from './pages/LandingPage';
-import ProfilePage from './pages/ProfilePage';
+import { LandingPage } from './pages/landing/LandingPage';
+import ProfilePage from './pages/employer/ProfilePage';
 import { ToastContainer } from './components/ui/Toast';
 import { useToast } from './hooks/useToast';
 import { EmailVerificationPage } from './components/auth/EmailVerificationPage';
 import { CareerFairListPage } from './pages/student/CareerFairListPage';
-import { FairManagementPage } from './pages/employer/fairs/FairManagementPage';
-import { BoothSetupPage } from './pages/employer/fairs/BoothSetupPage';
-import { FairDiscoveryPage } from './pages/employer/fairs/FairDiscoveryPage';
+import { FairManagementPage } from './pages/employer/FairManagementPage';
+import { BoothSetupPage } from './pages/employer/BoothSetupPage';
+import { FairDiscoveryPage } from './pages/employer/FairDiscoveryPage';
+import { UserRole } from './types/enums';
+import AIInsightsPage from "./pages/university/AIInsights";
+import Students from "./pages/university/Students";
+import { Staff } from "./pages/university/Staff";
+import UniversityManagement from "./pages/university/UniversityManagement";
+import { UniversityProfile } from "./pages/university/UniversityProfile";
 
 function AppRoutes() {
   const { toasts, removeToast } = useToast();
@@ -56,7 +60,7 @@ function AppRoutes() {
         <Route
           path="/student/*"
           element={
-            <ProtectedRoute allowedRoles={['student']}>
+            <ProtectedRoute allowedRoles={[UserRole.STUDENT]}>
               <Layout>
                 <Routes>
                   <Route path="dashboard" element={<StudentDashboard />} />
@@ -82,14 +86,16 @@ function AppRoutes() {
         <Route
           path="/university/*"
           element={
-            <ProtectedRoute allowedRoles={['university']}>
+            <ProtectedRoute allowedRoles={[UserRole.UNIVERSITY]}>
               <Layout>
                 <Routes>
                   <Route path="dashboard" element={<UniversityDashboard />} />
-                  <Route path="employer-feedback" element={<EmployerFeedback />} />
+                  <Route path="ai-insights" element={<AIInsightsPage />} />
+                  <Route path="students" element={<Students />} />
+                  <Route path="staff" element={<Staff />} />
                   <Route path="career-fair" element={<CareerFairOversight />} />
-                  <Route path="registrations" element={<RegistrationManagement />} />
-                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="management" element={<UniversityManagement />} />
+                  <Route path="profile" element={<UniversityProfile />} />
                   <Route path="*" element={<Navigate to="/university/dashboard" replace />} />
                 </Routes>
               </Layout>
@@ -101,7 +107,7 @@ function AppRoutes() {
         <Route
           path="/employer/*"
           element={
-            <ProtectedRoute allowedRoles={['employer']}>
+            <ProtectedRoute allowedRoles={[UserRole.EMPLOYER]}>
               <CareerFairProvider>
                 <EmployerLayout>
                   <Routes>

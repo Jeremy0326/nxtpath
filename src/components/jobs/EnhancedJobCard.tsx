@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Job } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 import { MapPin, Building, Calendar, DollarSign, Users, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface EnhancedJobCardProps {

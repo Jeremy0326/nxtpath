@@ -1,5 +1,5 @@
 import React from 'react';
-import { Job, CareerInsight, AdvancedAnalysis } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 
 interface AdvancedMatchDetailsProps {
   job: Job;

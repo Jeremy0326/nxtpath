@@ -35,7 +35,7 @@ class STTConsumer(AsyncWebsocketConsumer):
 
     async def stream_to_google_stt(self):
         try:
-            from google.cloud import speech
+            # from google.cloud import speech
             import io
             # Combine all audio chunks into a single bytes object
             audio_bytes = b"".join(self.audio_chunks)

@@ -14,6 +14,8 @@ from .views import (
     HiringPipelineStatsView,
     TeamMembersView,
     CompanyProfileView,
+    ConnectionView,
+    ConnectionActionView,
 )
 
 urlpatterns = [
@@ -32,4 +34,6 @@ urlpatterns = [
     path('hiring-pipeline-stats/', HiringPipelineStatsView.as_view(), name='hiring-pipeline-stats'),
     path('team-members/', TeamMembersView.as_view(), name='team-members'),
     path('company-profile/', CompanyProfileView.as_view(), name='company-profile'),
+    path('connections/', ConnectionView.as_view(), name='connections'),
+    path('connections/<uuid:connection_id>/action/', ConnectionActionView.as_view(), name='connection-action'),
 ] 

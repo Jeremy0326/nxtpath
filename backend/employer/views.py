@@ -2,14 +2,14 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
-from jobs.models import Job, Application, AIInterview, AIAnalysisReport, Resume
-from accounts.models import StudentProfile, EmployerProfile, Company, User
+from jobs.models import Job, Application, AIInterview, AIInterviewReport, AIAnalysisReport, Resume
+from accounts.models import StudentProfile, EmployerProfile, Company, User, Connection
 from django.db.models import Count, Q, Max, Avg, F, ExpressionWrapper, DurationField
 from django.utils import timezone
 from datetime import timedelta
 from .serializers import EmployerJobSerializer, ApplicationSerializer, JobMatchingWeightageSerializer, CandidateSerializer
-from accounts.serializers import StudentProfileSerializer, StudentProfileDetailSerializer, EmployerProfileSerializer, CompanySerializer, UserSerializer
-from jobs.serializers import AIAnalysisReportSerializer, AIInterviewSerializer
+from accounts.serializers import StudentProfileSerializer, StudentProfileDetailSerializer, EmployerProfileSerializer, CompanySerializer, UserSerializer, ConnectionSerializer
+from jobs.serializers import AIAnalysisReportSerializer, AIInterviewSerializer, AIInterviewReportSerializer
 import logging
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,12 @@ class InterviewReportView(APIView):
         except AIInterview.DoesNotExist:
             return Response({"error": "Interview not found for this application."}, status=status.HTTP_404_NOT_FOUND)
         
-        serializer = AIInterviewSerializer(interview)
+        # Get the actual interview report
+        report = AIInterviewReport.objects.filter(interview=interview).order_by('-created_at').first()
+        if not report:
+            return Response({"error": "No AI interview report found for this application."}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = AIInterviewReportSerializer(report)
         return Response(serializer.data)
 
 
@@ -585,3 +590,111 @@ class CompanyProfileView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ConnectionView(APIView):
+    """
+    Handle connection requests between employers and students from resume bank.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        """Send a connection request to a student."""
+        student_id = request.data.get('student_id')
+        message = request.data.get('message', '')
+        
+        if not student_id:
+            return Response({'error': 'Student ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            student = User.objects.get(id=student_id)
+            if not hasattr(student, 'student_profile'):
+                return Response({'error': 'User is not a student.'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if connection already exists
+        existing_connection = Connection.objects.filter(
+            employer=request.user,
+            student=student
+        ).first()
+        
+        if existing_connection:
+            if existing_connection.status == Connection.Status.PENDING:
+                return Response({'error': 'Connection request already sent.'}, status=status.HTTP_400_BAD_REQUEST)
+            elif existing_connection.status == Connection.Status.ACCEPTED:
+                return Response({'error': 'Already connected with this student.'}, status=status.HTTP_400_BAD_REQUEST)
+            elif existing_connection.status == Connection.Status.REJECTED:
+                # Update existing rejected connection to pending
+                existing_connection.status = Connection.Status.PENDING
+                existing_connection.message = message
+                existing_connection.save()
+                serializer = ConnectionSerializer(existing_connection)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        # Create new connection
+        connection = Connection.objects.create(
+            employer=request.user,
+            student=student,
+            message=message
+        )
+        
+        serializer = ConnectionSerializer(connection)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def get(self, request, *args, **kwargs):
+        """Get connection requests for the current user."""
+        if hasattr(request.user, 'employer_profile'):
+            # Employer viewing sent connections
+            connections = Connection.objects.filter(employer=request.user)
+        elif hasattr(request.user, 'student_profile'):
+            # Student viewing received connections
+            connections = Connection.objects.filter(student=request.user)
+        else:
+            return Response({'error': 'Invalid user type.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = ConnectionSerializer(connections, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ConnectionActionView(APIView):
+    """
+    Handle connection actions (accept/reject/withdraw).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, connection_id, *args, **kwargs):
+        """Update connection status."""
+        action = request.data.get('action')
+        
+        if action not in ['accept', 'reject', 'withdraw']:
+            return Response({'error': 'Invalid action.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            if hasattr(request.user, 'employer_profile'):
+                connection = Connection.objects.get(id=connection_id, employer=request.user)
+            elif hasattr(request.user, 'student_profile'):
+                connection = Connection.objects.get(id=connection_id, student=request.user)
+            else:
+                return Response({'error': 'Invalid user type.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Connection.DoesNotExist:
+            return Response({'error': 'Connection not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Update status based on action
+        if action == 'accept':
+            if hasattr(request.user, 'student_profile'):
+                connection.status = Connection.Status.ACCEPTED
+            else:
+                return Response({'error': 'Only students can accept connections.'}, status=status.HTTP_400_BAD_REQUEST)
+        elif action == 'reject':
+            if hasattr(request.user, 'student_profile'):
+                connection.status = Connection.Status.REJECTED
+            else:
+                return Response({'error': 'Only students can reject connections.'}, status=status.HTTP_400_BAD_REQUEST)
+        elif action == 'withdraw':
+            if hasattr(request.user, 'employer_profile'):
+                connection.status = Connection.Status.WITHDRAWN
+            else:
+                return Response({'error': 'Only employers can withdraw connections.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        connection.save()
+        serializer = ConnectionSerializer(connection)
+        return Response(serializer.data, status=status.HTTP_200_OK)

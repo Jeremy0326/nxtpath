@@ -10,13 +10,13 @@ import {
   AlertCircle,
   ExternalLink,
 } from 'lucide-react';
-import type { Job } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 
 interface ApplicationConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void>;
-  job: Job | null;
+  job: ExtendedJob | null;
   resumeFilename?: string;
   resumeUrl?: string;
 }
@@ -152,10 +152,10 @@ export function ApplicationConfirmationModal({
                       <MapPin className="h-4 w-4 mr-1.5" />
                       {job.location}
                     </div>
-                    <div className="flex items-center text-sm text-gray-600 mt-1">
-                      <Calendar className="h-4 w-4 mr-1.5" />
-                      Posted {formatDate(job.posted_at)}
-                    </div>
+                                      <div className="flex items-center text-sm text-gray-600 mt-1">
+                    <Calendar className="h-4 w-4 mr-1.5" />
+                    Posted {formatDate(job.posted_at || job.created_at)}
+                  </div>
                   </div>
                 </div>
               </div>

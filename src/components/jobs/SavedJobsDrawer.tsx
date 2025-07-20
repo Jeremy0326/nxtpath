@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Bookmark, MapPin, Briefcase, Calendar, Loader2, RefreshCw, AlertCircle, Clock, Building, Star, ChevronRight, Trash2, CheckCircle, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Job } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 import { jobService } from '../../services/jobService';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useSavedJobsStore } from '../../stores/savedJobsStore';

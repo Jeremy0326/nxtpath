@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle, AlertCircle, Star, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import type { Job } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 
 interface MatchCategory {
   name: string;

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, StudentProfile, EmployerProfile, UniversityStaffProfile, Company, University, Resume, CompanyJoinRequest
+from .models import User, StudentProfile, EmployerProfile, UniversityStaffProfile, Company, University, Resume, CompanyJoinRequest, Connection
 
 # Register your models here.
 
@@ -46,3 +46,11 @@ class CompanyJoinRequestAdmin(admin.ModelAdmin):
     list_display = ('user', 'company', 'status', 'created_at')
     list_filter = ('status', 'company')
     search_fields = ('user__email', 'company__name')
+
+@admin.register(Connection)
+class ConnectionAdmin(admin.ModelAdmin):
+    list_display = ('employer', 'student', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('employer__email', 'student__email', 'employer__full_name', 'student__full_name')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)

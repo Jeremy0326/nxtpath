@@ -1,32 +1,12 @@
-// Add full, correct type definitions for Web Speech API
-interface SpeechRecognitionEvent extends Event {
-  readonly resultIndex: number;
-  readonly results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  readonly error: string;
-  readonly message: string;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onstart: () => void;
-  onend: () => void;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: (event: SpeechRecognitionErrorEvent) => void;
-  start: () => void;
-  stop: () => void;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: new () => SpeechRecognition;
-    webkitSpeechRecognition: new () => SpeechRecognition;
-  }
-}
+// Import types from organized type files
+import { 
+  SpeechRecognitionEvent, 
+  SpeechRecognitionErrorEvent, 
+  SpeechRecognition,
+  FrontendInterviewQuestion,
+  AIInterviewSession,
+  FrontendInterviewAnswer
+} from '../../types/interview';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -35,42 +15,12 @@ import {
   Clock, Mic, X, Loader2, CheckCircle, AlertCircle, Sparkles, Volume2, MicOff, Play, Pause, ServerCrash, ShieldCheck, Info
 } from 'lucide-react';
 import { jobService } from '../../services/jobService';
+import { whisperService } from '../../services/whisperService';
 
-// Types
-interface InterviewQuestion {
-  question_text: string;
-  type: string;
-}
+// Types are now imported from organized type files
 
-interface AIInterviewSession {
-  id: string;
-  questions: InterviewQuestion[];
-}
-
-interface InterviewAnswer {
-  text: string;
-  audio_url?: string;
-  audio?: Blob; // Allow sending audio blob to the backend
-}
-
-function PostInterviewModal({ isOpen, onClose, applicationId }: { isOpen: boolean; onClose: () => void; applicationId: string }) {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full text-center">
-        <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-        <h2 className="mt-4 text-2xl font-bold text-gray-900">Interview Complete!</h2>
-        <p className="mt-2 text-gray-600">Thank you for completing your AI interview. Your responses have been submitted and are being reviewed by the employer. You will be notified of any updates to your application status.</p>
-        <button
-          onClick={onClose}
-          className="mt-8 w-full bg-purple-600 text-white font-semibold py-3 rounded-lg hover:bg-purple-700 transition"
-        >
-          Back to My Applications
-        </button>
-      </div>
-    </div>
-  );
-}
+// Remove the PostInterviewModal component since it's causing duplicate messages
+// The renderComplete function will handle the completion UI
 
 // The new, dedicated interview page
 export function InterviewPage() {
@@ -112,7 +62,7 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
   const [session, setSession] = useState<AIInterviewSession | null>(persisted?.session || null);
   const [error, setError] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(persisted?.currentQuestionIndex || 0);
-  const [answers, setAnswers] = useState<InterviewAnswer[]>(persisted?.answers || []);
+  const [answers, setAnswers] = useState<FrontendInterviewAnswer[]>(persisted?.answers || []);
   
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // For TTS or submitting
@@ -126,16 +76,19 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // --- Frontend STT State ---
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-
+  const [isWhisperAvailable, setIsWhisperAvailable] = useState(false);
+  const [useWhisper, setUseWhisper] = useState(true); // Toggle between Whisper and Web Speech API
   const [liveTranscript, setLiveTranscript] = useState('');
-  const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(true);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const finalTranscriptRef = useRef<string>('');
-  const [isListening, setIsListening] = useState(false); // Add state for listening status
+  const [isListening, setIsListening] = useState(false);
+  
+  // --- Web Speech API State (for fallback) ---
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [isSpeechRecognitionSupported, setIsSpeechRecognitionSupported] = useState(true);
   
   // --- UI State ---
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [showPostInterviewModal, setShowPostInterviewModal] = useState(false);
 
   // --- Helper to construct full audio URL ---
   const getAbsoluteAudioUrl = (relativeUrl: string) => {
@@ -177,10 +130,17 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
   // --- Recording & Transcription Logic ---
   
   useEffect(() => {
+    // Check if Whisper is available
+    setIsWhisperAvailable(whisperService.isAvailable());
+    
+    // Check if Web Speech API is available
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setIsSpeechRecognitionSupported(false);
-    }
+    setIsSpeechRecognitionSupported(!!SpeechRecognition);
+    
+    // Debug environment variables
+    console.log('Environment variables check:');
+    console.log('VITE_OPENAI_API_KEY exists:', !!import.meta.env.VITE_OPENAI_API_KEY);
+    console.log('VITE_OPENAI_API_KEY length:', import.meta.env.VITE_OPENAI_API_KEY?.length || 0);
   }, []);
 
   const startRecording = useCallback(async () => {
@@ -207,18 +167,26 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
     }
     mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: supportedMimeType });
     audioChunksRef.current = [];
+    
+    // Set up data available handler
     mediaRecorderRef.current.ondataavailable = (event) => {
+      console.log('MediaRecorder ondataavailable:', event.data.size, 'bytes');
       if (event.data.size > 0) {
         audioChunksRef.current.push(event.data);
       }
     };
+    
     mediaRecorderRef.current.onstop = () => {
       // When recording stops, get all tracks from the stream and stop them
       stream.getTracks().forEach(track => track.stop());
     };
 
-    // 3. Setup Web Speech API for live transcription
-    if (isSpeechRecognitionSupported) {
+    // 3. Setup transcription based on selected method
+    if (useWhisper && isWhisperAvailable) {
+      // Use Whisper API - transcription handled by useEffect
+      setIsListening(true);
+    } else if (isSpeechRecognitionSupported) {
+      // Use Web Speech API as fallback
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
@@ -231,8 +199,7 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
 
       recognitionRef.current.onend = () => {
         setIsListening(false);
-        // Automatically restart if recording is still supposed to be active.
-        // This makes the recording resilient to brief pauses or network hiccups.
+        // Automatically restart if recording is still supposed to be active
         if (mediaRecorderRef.current?.state === 'recording') {
           recognitionRef.current?.start();
         }
@@ -274,22 +241,37 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
       recognitionRef.current.start();
     }
     
-    // 4. Start everything
-    mediaRecorderRef.current.start();
+    // 4. Start recording
+    mediaRecorderRef.current.start(1000); // Start with 1-second timeslice for regular chunks
     setIsRecording(true);
     startTimer();
-  }, [isRecording, isSpeechRecognitionSupported, answers, currentQuestionIndex]);
+    
+    // Reset audio tracking for new recording
+    lastProcessedAudioSize.current = 0;
+  }, [isRecording, useWhisper, isWhisperAvailable, isSpeechRecognitionSupported, answers, currentQuestionIndex]);
 
   const stopRecording = useCallback(() => {
     if (!isRecording) return;
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
+    
+    // Clear transcription timeout
+    if (transcriptionTimeoutRef.current) {
+      clearInterval(transcriptionTimeoutRef.current);
+      transcriptionTimeoutRef.current = null;
+    }
+    
+    // Stop Web Speech API if it's running
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
+    
     stopTimer();
     setIsRecording(false);
+    setIsListening(false);
+    setIsTranscribing(false);
+    isTranscribingRef.current = false;
   }, [isRecording]);
   
   // --- Question Flow Logic ---
@@ -316,14 +298,21 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
       });
       
       if (updatedSession.status === 'COMPLETED') {
+        // Generate interview report and update application status
+        try {
         await jobService.generateInterviewReport(applicationId);
+        } catch (reportError) {
+          console.error('Failed to generate interview report:', reportError);
+          // Continue with completion even if report generation fails
+        }
         setStep('complete');
-        setShowPostInterviewModal(true);
+        // Remove the duplicate modal - just use the renderComplete function
       } else {
         setSession(updatedSession);
         setCurrentQuestionIndex((prev: number) => prev + 1);
         setLiveTranscript('');
         finalTranscriptRef.current = '';
+        lastProcessedAudioSize.current = 0; // Reset audio tracking for next question
         setStep('session');
       }
     } catch (err: any) {
@@ -373,7 +362,13 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
       stopTimer();
       if (ttsAudioRef.current) ttsAudioRef.current.pause();
       if (recognitionRef.current) recognitionRef.current.stop();
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') mediaRecorderRef.current.stop();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        // Clear transcription interval for Whisper
+        if ((mediaRecorderRef.current as any).transcriptionInterval) {
+          clearInterval((mediaRecorderRef.current as any).transcriptionInterval);
+        }
+      }
     };
   }, []);
 
@@ -384,6 +379,165 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionIndex, step]);
+  
+  // Smart text deduplication function
+  const cleanTranscript = (text: string): string => {
+    if (!text) return '';
+    
+    // Split into sentences
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    
+    // Remove duplicate consecutive sentences and phrases
+    const cleanedSentences: string[] = [];
+    for (let i = 0; i < sentences.length; i++) {
+      const currentSentence = sentences[i].trim();
+      
+      // Check if this sentence is too similar to any previous sentence
+      const isDuplicate = cleanedSentences.some(prevSentence => {
+        const similarity = calculateSimilarity(currentSentence, prevSentence);
+        return similarity > 0.8; // 80% similarity threshold
+      });
+      
+      if (!isDuplicate) {
+        // Clean word repetitions within the sentence
+        const cleanedSentence = removeWordRepetitions(currentSentence);
+        cleanedSentences.push(cleanedSentence);
+      }
+    }
+    
+    // Join sentences back together
+    return cleanedSentences.join('. ').trim();
+  };
+
+  // Remove repetitive words within a sentence
+  const removeWordRepetitions = (sentence: string): string => {
+    const words = sentence.split(/\s+/);
+    const cleanedWords: string[] = [];
+    
+    for (let i = 0; i < words.length; i++) {
+      const currentWord = words[i].toLowerCase().replace(/[^\w]/g, '');
+      
+      // Check if this word is repeated too many times in a row
+      let repetitionCount = 1;
+      for (let j = i + 1; j < words.length; j++) {
+        const nextWord = words[j].toLowerCase().replace(/[^\w]/g, '');
+        if (currentWord === nextWord) {
+          repetitionCount++;
+        } else {
+          break;
+        }
+      }
+      
+      // If word is repeated more than 2 times, only keep it once
+      if (repetitionCount > 2) {
+        cleanedWords.push(words[i]);
+        i += repetitionCount - 1; // Skip the repeated words
+      } else {
+        cleanedWords.push(words[i]);
+      }
+    }
+    
+    return cleanedWords.join(' ');
+  };
+
+  // Calculate similarity between two strings
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const words1 = str1.toLowerCase().split(/\s+/);
+    const words2 = str2.toLowerCase().split(/\s+/);
+    
+    const commonWords = words1.filter(word => words2.includes(word));
+    const totalWords = Math.max(words1.length, words2.length);
+    
+    return totalWords > 0 ? commonWords.length / totalWords : 0;
+  };
+
+  // Transcription logic with cleanup
+  const transcriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTranscribingRef = useRef(false);
+  const lastProcessedAudioSize = useRef(0);
+
+  const attemptTranscription = useCallback(async () => {
+    if (!isRecording || !useWhisper || !isWhisperAvailable || isTranscribingRef.current) {
+      return;
+    }
+
+    const chunks = audioChunksRef.current;
+    if (chunks.length === 0) {
+      console.log('No audio chunks available for transcription');
+      return;
+    }
+
+    const audioBlob = new Blob(chunks, { type: chunks[0].type });
+    
+    // Only transcribe if we have new audio data
+    if (audioBlob.size <= lastProcessedAudioSize.current) {
+      console.log('No new audio data to transcribe');
+      return;
+    }
+
+    isTranscribingRef.current = true;
+    setIsTranscribing(true);
+
+    try {
+      console.log('Transcription attempt:', {
+        audioSize: audioBlob.size,
+        chunksCount: chunks.length,
+        mimeType: audioBlob.type,
+        lastProcessedSize: lastProcessedAudioSize.current
+      });
+
+      const result = await whisperService.transcribeAudio(audioBlob);
+      
+      if (result && result.transcript) {
+        console.log('Whisper transcription result:', result);
+        
+        // Clean the transcript to remove repetitions
+        const cleanedTranscript = cleanTranscript(result.transcript.trim());
+        console.log('Cleaned transcript:', cleanedTranscript);
+        
+        // Update the transcript with the cleaned content
+        setLiveTranscript(cleanedTranscript);
+        
+        // Update the actual answer state
+        const updatedAnswers = [...answers];
+        updatedAnswers[currentQuestionIndex] = { ...updatedAnswers[currentQuestionIndex], text: cleanedTranscript };
+        setAnswers(updatedAnswers);
+        
+        // Mark this audio size as processed
+        lastProcessedAudioSize.current = audioBlob.size;
+        
+        console.log('Updated transcript:', cleanedTranscript);
+      } else {
+        console.log('No transcript returned from Whisper');
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      setError('Transcription failed. Please try again.');
+    } finally {
+      setIsTranscribing(false);
+      isTranscribingRef.current = false;
+    }
+  }, [isRecording, useWhisper, isWhisperAvailable, answers, currentQuestionIndex]);
+
+  // Set up periodic transcription
+  useEffect(() => {
+    // Clear any existing timeout first
+    if (transcriptionTimeoutRef.current) {
+      clearInterval(transcriptionTimeoutRef.current);
+      transcriptionTimeoutRef.current = null;
+    }
+
+    if (isRecording && useWhisper && isWhisperAvailable) {
+      transcriptionTimeoutRef.current = setInterval(attemptTranscription, 2000);
+    }
+
+    return () => {
+      if (transcriptionTimeoutRef.current) {
+        clearInterval(transcriptionTimeoutRef.current);
+        transcriptionTimeoutRef.current = null;
+      }
+    };
+  }, [isRecording, useWhisper, isWhisperAvailable, attemptTranscription]);
   
   // --- Render Functions ---
 
@@ -440,7 +594,12 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
     <div className="bg-white p-8 rounded-xl shadow-xl max-w-md mx-auto text-center">
       <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
       <h2 className="mt-4 text-2xl font-bold text-gray-900">Interview Complete!</h2>
-      <p className="mt-2 text-gray-600">Thank you. The hiring team will review your responses and be in touch.</p>
+      <p className="mt-2 text-gray-600 mb-4">Thank you for completing your AI interview. Your responses have been submitted and are being reviewed by the employer.</p>
+      <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6">
+        <p className="text-sm text-green-700">
+          <strong>Status Updated:</strong> Your application status has been updated to "Interviewed" and the employer can now view your AI interview report.
+        </p>
+      </div>
       <button onClick={handleComplete} className="mt-6 w-full bg-purple-600 text-white font-semibold py-3 rounded-lg hover:bg-purple-700 transition">
         Back to My Applications
       </button>
@@ -450,9 +609,19 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
   const renderSession = () => {
     if (!session) return renderLoading("Initializing session...");
     const currentQuestion = session.questions[currentQuestionIndex];
-    // Always derive totalQuestions from the session object to prevent data bugs.
-    const totalQuestions = session.questions.length;
+    // Show 3 total questions since the backend generates 3 questions total
+    const totalQuestions = 3;
     const progress = totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
+    const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
+    
+    // Debug session data
+    // console.log('Session data:', {
+    //   totalQuestions,
+    //   currentQuestionIndex,
+    //   progress,
+    //   isLastQuestion,
+    //   questions: session.questions?.length || 0
+    // });
     
     return (
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full flex flex-col">
@@ -465,8 +634,14 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
         <div className="w-full bg-gray-200 h-2"><motion.div className="bg-purple-600 h-2" style={{ width: `${progress}%` }} /></div>
         
         <div className="p-6 flex-grow overflow-y-auto">
+          {/* Enhanced Question Header with Progress */}
           <div className="bg-purple-50 p-5 rounded-lg border border-purple-200">
-            <p className="text-sm text-purple-700 font-semibold">Question {currentQuestionIndex + 1} of {totalQuestions}</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-purple-700 font-semibold">Question {currentQuestionIndex + 1} of {totalQuestions}</p>
+              <div className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                {Math.round(progress)}% Complete
+              </div>
+            </div>
             <p className="mt-2 text-lg font-medium text-gray-900">{currentQuestion.question_text}</p>
             <button onClick={playTTS} disabled={isProcessing} className="mt-3 text-purple-600 flex items-center gap-2 text-sm font-medium disabled:opacity-50">
               <Volume2 size={16} /> Listen Again
@@ -478,14 +653,87 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
                 <h3 className="font-semibold text-gray-800">Your Answer</h3>
                 <div className="font-mono text-sm text-gray-500 flex items-center gap-2"><Clock size={16} /> {new Date(timer * 1000).toISOString().substr(14, 5)}</div>
             </div>
-            {!isSpeechRecognitionSupported && (
+            
+            {/* Transcription Method Toggle */}
+            {(isWhisperAvailable || isSpeechRecognitionSupported) && (
+              <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Transcription Method:</span>
+                  <div className="flex items-center space-x-3">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="transcriptionMethod"
+                        checked={useWhisper && isWhisperAvailable}
+                        onChange={() => setUseWhisper(true)}
+                        disabled={!isWhisperAvailable}
+                        className="mr-2"
+                      />
+                      <span className={`text-sm ${!isWhisperAvailable ? 'text-gray-400' : 'text-gray-700'}`}>
+                        Whisper AI {!isWhisperAvailable && '(Not Available)'}
+                      </span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="transcriptionMethod"
+                        checked={!useWhisper && isSpeechRecognitionSupported}
+                        onChange={() => setUseWhisper(false)}
+                        disabled={!isSpeechRecognitionSupported}
+                        className="mr-2"
+                      />
+                      <span className={`text-sm ${!isSpeechRecognitionSupported ? 'text-gray-400' : 'text-gray-700'}`}>
+                        Web Speech API {!isSpeechRecognitionSupported && '(Not Available)'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  {useWhisper ? 
+                    "Whisper AI: Better accuracy for technical terms, uses API credits" :
+                    "Web Speech API: Free, browser-based, may have lower accuracy for tech terms"
+                  }
+                </div>
+              </div>
+            )}
+            
+            {/* Helpful Text */}
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-800">
+                  <strong>Tip:</strong> Speak clearly and edit the text field to correct any inaccuracies.
+                </div>
+              </div>
+            </div>
+            
+            {!isWhisperAvailable && !isSpeechRecognitionSupported && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm flex items-center gap-2">
-                <Info size={16} /> Live transcription is not supported in your browser. Please type your answer.
+                <Info size={16} /> No transcription methods available. Please type your answer.
+              </div>
+            )}
+            {isWhisperAvailable && useWhisper && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-blue-800 text-sm flex items-center gap-2">
+                <Info size={16} /> 
+                <div>
+                  <strong>Whisper AI Transcription Active:</strong> Speak clearly for best results. Technical terms are optimized for recognition. 
+                  {isListening && <span className="text-green-600 font-medium"> • Recording...</span>}
+                  {isTranscribing && <span className="text-purple-600 font-medium"> • Transcribing...</span>}
+                </div>
+              </div>
+            )}
+            {isSpeechRecognitionSupported && !useWhisper && (
+              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded text-green-800 text-sm flex items-center gap-2">
+                <Info size={16} /> 
+                <div>
+                  <strong>Web Speech API Active:</strong> Free transcription using your browser. 
+                  {isListening && <span className="text-green-600 font-medium"> • Listening...</span>}
+                </div>
               </div>
             )}
             <textarea
               className="mt-2 w-full border-gray-300 rounded-lg p-3 h-40 focus:ring-purple-500 focus:border-purple-500"
-              placeholder={isListening ? 'Listening...' : (isRecording ? 'Starting microphone...' : 'Type your answer here or use the voice recording option...')}
+              placeholder={isListening ? 'Recording...' : (isTranscribing ? 'Transcribing...' : 'Type your answer here or use the voice recording option...')}
               value={answers[currentQuestionIndex]?.text || ''}
               onChange={(e) => {
                 const updatedAnswers = [...answers];
@@ -494,13 +742,16 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
                 setLiveTranscript(e.target.value);
               }}
               disabled={isRecording || isSubmitting}
+              data-gramm="false"
+              data-gramm_editor="false"
+              data-enable-grammarly="false"
             />
           </div>
 
           <div className="mt-4 flex items-center justify-between">
             <button
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={isSubmitting || !isSpeechRecognitionSupported}
+              disabled={isSubmitting || (!isWhisperAvailable && !isSpeechRecognitionSupported)}
               className={`px-6 py-3 rounded-lg text-white font-semibold flex items-center gap-2 transition ${isRecording ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isRecording ? <><MicOff size={18} />Stop Recording</> : <><Mic size={18} />Record Answer</>}
@@ -510,7 +761,7 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
               disabled={isRecording || isSubmitting || !answers[currentQuestionIndex]?.text?.trim()}
               className="bg-green-600 text-white font-semibold py-3 px-8 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
             >
-              {isSubmitting ? <Loader2 className="animate-spin" /> : (currentQuestionIndex === totalQuestions - 1 ? 'Finish & Submit' : 'Next Question')}
+              {isSubmitting ? <Loader2 className="animate-spin" /> : (isLastQuestion ? 'Submit Interview' : 'Next Question')}
             </button>
           </div>
           {error && <div className="mt-4 text-red-600 text-sm text-center p-2 bg-red-50 rounded-md">{error}</div>}
@@ -559,16 +810,6 @@ function InterviewFlow({ applicationId }: { applicationId: string }) {
         </motion.div>
       </AnimatePresence>
       {showExitConfirm && renderExitConfirm()}
-      {showPostInterviewModal && (
-        <PostInterviewModal
-          isOpen={showPostInterviewModal}
-          onClose={() => {
-            setShowPostInterviewModal(false);
-            navigate('/student/applications');
-          }}
-          applicationId={applicationId}
-        />
-      )}
     </div>
   );
 }

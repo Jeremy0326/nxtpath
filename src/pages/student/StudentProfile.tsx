@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { getProfile, updateProfile, updateAccount } from '@/lib/api/profile';
+import { updateProfile, updateAccount, getUniversities, getProfile } from '@/lib/api';
 import type { StudentProfile, User } from '@/types';
 import { useToast } from '@/hooks/useToast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ProfilePictureUpload } from '@/components/profile/ProfilePictureUpload';
+import { ProfilePictureUpload } from '@/components/common/ProfilePictureUpload';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { getUniversities } from '@/lib/api/profile';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import api from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import api from '@/lib/axios';
 
 function TagInput({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [input, setInput] = useState('');
@@ -50,22 +50,39 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
 
 export function StudentProfile() {
   const { addToast } = useToast();
+  const { user: authUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [universities, setUniversities] = useState<{ id: number; name: string }[]>([]);
+  const [universities, setUniversities] = useState<{ id: string; name: string }[]>([]);
   const [passwordForm, setPasswordForm] = useState({ old_password: '', new_password: '', confirm_password: '' });
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const data = await getProfile();
-        setUser(data);
-        // Defensive initialization for career_preferences
-        let p = data.student_profile || null;
+    const loadProfileData = async () => {
+      if (authUser) {
+        setUser(authUser);
+        
+        // Check if we have student profile data
+        let p = authUser.student_profile || null;
+        
+        // If no student profile exists, try to fetch it from the API
+        if (!p) {
+          try {
+            console.log('No student profile found in authUser, fetching from API...');
+            const fullProfileData = await getProfile();
+            console.log('Full profile data:', fullProfileData);
+            p = fullProfileData.student_profile || null;
+          } catch (error) {
+            console.error('Failed to fetch profile data:', error);
+            addToast({ title: 'Error', description: 'Failed to load profile data.', variant: 'destructive' });
+          }
+        }
+        
+        // Initialize profile with proper career preferences
         if (p) {
+          console.log('Student profile found:', p);
           const cp = p.career_preferences || {};
           p = {
             ...p,
@@ -76,16 +93,19 @@ export function StudentProfile() {
               industries: Array.isArray(cp.industries) ? cp.industries : [],
             },
           };
+        } else {
+          console.log('No student profile data available');
         }
+        
         setProfile(p);
-      } catch (error) {
-        addToast({ title: 'Error', description: 'Failed to load profile.', variant: 'destructive' });
-      } finally {
+        setIsLoading(false);
+      } else {
         setIsLoading(false);
       }
     };
-    fetchProfile();
-  }, [addToast]);
+    
+    loadProfileData();
+  }, [authUser, addToast]);
 
   useEffect(() => {
     const fetchUniversities = async () => {
@@ -101,7 +121,7 @@ export function StudentProfile() {
   }, [addToast]);
 
   const handleProfileChange = (field: keyof StudentProfile, value: any) => {
-    setProfile(p => (p ? { ...p, [field]: value } : null));
+    setProfile(p => (p ? { ...p, [field]: value } : { ...defaultProfile, [field]: value }));
   };
 
   const handleUserChange = (field: keyof User, value: any) => {
@@ -110,12 +130,11 @@ export function StudentProfile() {
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
     try {
       // Always send university as a string (UUID) or null
       const payload = {
-        ...profile,
-        university: typeof profile.university === 'string' ? profile.university : null,
+        ...currentProfile,
+        university: typeof currentProfile.university === 'string' ? currentProfile.university : null,
       };
       await updateProfile({ student_profile: payload });
       addToast({ title: 'Success', description: 'Profile updated successfully!' });
@@ -163,7 +182,28 @@ export function StudentProfile() {
   };
 
   if (isLoading) return <div className="p-8 text-center">Loading...</div>;
-  if (!user || !profile) return <div>Could not load profile.</div>;
+  if (!user) return <div className="p-8 text-center text-red-500">Could not load profile.</div>;
+
+  // Create default profile if none exists
+  const defaultProfile: StudentProfile = {
+    user: user.id,
+    university: '',
+    major: '',
+    graduation_year: undefined,
+    gpa: undefined,
+    skills: [],
+    interests: [],
+    career_preferences: {
+      preferred_roles: [],
+      locations: [],
+      work_types: [],
+      industries: [],
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const currentProfile = profile || defaultProfile;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -245,7 +285,7 @@ export function StudentProfile() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">University</label>
                     <select
-                      value={profile.university || ''}
+                      value={currentProfile.university || ''}
                       onChange={e => handleProfileChange('university', e.target.value)}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     >
@@ -257,25 +297,25 @@ export function StudentProfile() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Major</label>
-                    <Input value={profile.major || ''} onChange={e => handleProfileChange('major', e.target.value)} />
+                    <Input value={currentProfile.major || ''} onChange={e => handleProfileChange('major', e.target.value)} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Graduation Year</label>
-                    <Input type="number" value={profile.graduation_year || ''} onChange={e => handleProfileChange('graduation_year', parseInt(e.target.value))} />
+                    <Input type="number" value={currentProfile.graduation_year || ''} onChange={e => handleProfileChange('graduation_year', parseInt(e.target.value))} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">GPA</label>
-                    <Input type="number" step="0.1" value={profile.gpa || ''} onChange={e => handleProfileChange('gpa', parseFloat(e.target.value))} />
+                    <Input type="number" step="0.1" value={currentProfile.gpa || ''} onChange={e => handleProfileChange('gpa', parseFloat(e.target.value))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Skills</label>
-                    <TagInput value={profile.skills || []} onChange={v => handleProfileChange('skills', v)} placeholder="Add a skill..." />
+                    <TagInput value={currentProfile.skills || []} onChange={v => handleProfileChange('skills', v)} placeholder="Add a skill..." />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Interests</label>
-                    <TagInput value={profile.interests || []} onChange={v => handleProfileChange('interests', v)} placeholder="Add an interest..." />
+                    <TagInput value={currentProfile.interests || []} onChange={v => handleProfileChange('interests', v)} placeholder="Add an interest..." />
                   </div>
                 </div>
                 <div className="bg-white rounded-lg p-4 shadow-sm mt-6">
@@ -284,32 +324,32 @@ export function StudentProfile() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Roles</label>
                       <TagInput
-                        value={profile.career_preferences?.preferred_roles || []}
-                        onChange={v => handleProfileChange('career_preferences', { ...profile.career_preferences, preferred_roles: v })}
+                        value={currentProfile.career_preferences?.preferred_roles || []}
+                        onChange={v => handleProfileChange('career_preferences', { ...currentProfile.career_preferences, preferred_roles: v })}
                         placeholder="Add a role..."
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Locations</label>
                       <TagInput
-                        value={profile.career_preferences?.locations || []}
-                        onChange={v => handleProfileChange('career_preferences', { ...profile.career_preferences, locations: v })}
+                        value={currentProfile.career_preferences?.locations || []}
+                        onChange={v => handleProfileChange('career_preferences', { ...currentProfile.career_preferences, locations: v })}
                         placeholder="Add a location..."
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Work Types</label>
                       <TagInput
-                        value={profile.career_preferences?.work_types || []}
-                        onChange={v => handleProfileChange('career_preferences', { ...profile.career_preferences, work_types: v })}
+                        value={currentProfile.career_preferences?.work_types || []}
+                        onChange={v => handleProfileChange('career_preferences', { ...currentProfile.career_preferences, work_types: v })}
                         placeholder="Add a work type..."
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Industries</label>
                       <TagInput
-                        value={profile.career_preferences?.industries || []}
-                        onChange={v => handleProfileChange('career_preferences', { ...profile.career_preferences, industries: v })}
+                        value={currentProfile.career_preferences?.industries || []}
+                        onChange={v => handleProfileChange('career_preferences', { ...currentProfile.career_preferences, industries: v })}
                         placeholder="Add an industry..."
                       />
                     </div>

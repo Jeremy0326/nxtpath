@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Job } from '@/types/job';
+import type { ExtendedJob } from '@/types/components';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAiMatchReportStore } from '@/stores/aiMatchReportStore';
@@ -8,7 +8,7 @@ import { Briefcase, MapPin, DollarSign, Clock, Building, X, ChevronRight, Calend
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { parseJobListItems } from '../../utils/jobParsing';
+import { parseJobListItems } from '../../lib/jobParsing';
 
 interface JobDetailsModalProps {
   job: Job | null;

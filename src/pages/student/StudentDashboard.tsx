@@ -25,6 +25,7 @@ import {
 import api from '../../lib/axios';
 import { careerFairService } from '../../services/careerFairService';
 import { jobService } from '../../services/jobService';
+import { ConnectionsPanel } from '../../components/student/ConnectionsPanel';
 
 interface Company {
   id: string;
@@ -152,7 +153,7 @@ export function StudentDashboard() {
           const today = new Date();
           const oneDayAgo = new Date(today.getTime() - 24 * 60 * 60 * 1000);
           
-          recentJobsData = jobs.slice(0, 5).map((job: any) => ({
+          recentJobsData = jobs.slice(0, 3).map((job: any) => ({
             id: job.id,
             title: job.title,
             company: job.company.name,
@@ -372,20 +373,22 @@ export function StudentDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-xl p-6"
+              className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <IconComponent className="h-8 w-8 text-indigo-600" />
+                  <div className="p-2 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg">
+                    <IconComponent className="h-6 w-6 text-indigo-600" />
+                  </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                     <p className="text-sm text-gray-500">{stat.label}</p>
                   </div>
                 </div>
-                <span className={`text-sm font-medium ${
-                  stat.type === 'increase' ? 'text-green-600' : 
-                  stat.type === 'decrease' ? 'text-red-600' : 
-                  'text-gray-600'
+                <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                  stat.type === 'increase' ? 'bg-green-100 text-green-700' : 
+                  stat.type === 'decrease' ? 'bg-red-100 text-red-700' : 
+                  'bg-gray-100 text-gray-700'
                 }`}>
                   {stat.change}
                 </span>
@@ -396,15 +399,15 @@ export function StudentDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Activity Feed */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl p-6">
+        <div className="xl:col-span-2 space-y-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Recent Activity & Notifications</h2>
             <div className="space-y-6">
               {activities.length > 0 ? (
                 activities.map((activity, index) => (
-                  <div key={index} className="flex items-start space-x-4">
+                  <div key={index} className="flex items-start space-x-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className={`p-2 rounded-lg ${
                       activity.type === 'ai-interview' ? 'bg-green-100' :
                       activity.type === 'interview' ? 'bg-purple-100' :
@@ -472,9 +475,12 @@ export function StudentDashboard() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-full">
+          {/* Connections Panel */}
+          <ConnectionsPanel />
+          
           {/* Upcoming Events */}
-          <div className="bg-white rounded-xl p-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900">Upcoming Career Fairs</h2>
               <Link
@@ -523,7 +529,7 @@ export function StudentDashboard() {
           </div>
 
           {/* Recent Job Notifications */}
-          <div className="bg-white rounded-xl p-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900">Recent Job Postings</h2>
               <Link

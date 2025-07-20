@@ -1,8 +1,6 @@
 import { create } from 'zustand';
 import { jobService } from '@/services/jobService';
-import { vectorScoringService } from '@/services/vectorScoringService';
-import { GroupedMatchReport } from '@/types';
-import axios from 'axios';
+import { GroupedMatchReport } from '@/types/index';
 import api from '@/lib/axios';
 
 interface AiMatchReport {
@@ -18,8 +16,6 @@ interface AiMatchReportState {
   reports: Record<string, AiMatchReport>;
   fetchReport: (jobId: string, forceRefresh?: boolean) => Promise<void>;
   getReport: (jobId: string) => AiMatchReport | undefined;
-  updateVectorScore: (jobId: string, vectorScore: number) => void;
-  compareScores: (jobId: string) => { vectorScore?: number; llmScore?: number; difference?: number } | null;
   clearStaleReports: (activeJobIds: string[]) => void;
 }
 
@@ -97,16 +93,8 @@ export const useAiMatchReportStore = create<AiMatchReportState>((set, get) => ({
         llmReport = get().reports[jobId]?.data;
       }
 
-      // Fetch vector score only if no LLM report
+      // Vector scoring removed - using only LLM reports
       let vectorScoreData: any = null;
-      if (!llmReport) {
-        try {
-          const vectorRes = await vectorScoringService.getSingleJobScore(jobId, cvId);
-          vectorScoreData = vectorRes;
-        } catch (err) {
-          // Ignore, handled below
-        }
-      }
 
       // Determine which score to show
       let score: number | undefined = undefined;
@@ -155,36 +143,7 @@ export const useAiMatchReportStore = create<AiMatchReportState>((set, get) => ({
     }
   },
 
-  updateVectorScore: (jobId: string, vectorScore: number) => {
-    set((state) => ({
-      reports: {
-        ...state.reports,
-        [jobId]: {
-          ...(state.reports[jobId] || { data: null, isLoading: false, error: null }),
-          vectorScore,
-          vectorScoreUpdated: true,
-        },
-      },
-    }));
-  },
 
-  compareScores: (jobId: string) => {
-    const report = get().reports[jobId];
-    if (!report) return null;
-
-    const vectorScore = report.vectorScore;
-    const llmScore = report.data?.overall_score;
-
-    if (vectorScore === undefined || llmScore === undefined) {
-      return { vectorScore, llmScore };
-    }
-
-    return {
-      vectorScore,
-      llmScore,
-      difference: Math.abs(vectorScore - llmScore),
-    };
-  },
 
   // Clear reports for jobs not in the current job list
   clearStaleReports: (activeJobIds: string[]) => {

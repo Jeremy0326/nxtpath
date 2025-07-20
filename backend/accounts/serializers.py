@@ -1,7 +1,13 @@
 from rest_framework import serializers
-from .models import User, StudentProfile, EmployerProfile, UniversityStaffProfile, University, Company, Resume
+from .models import User, StudentProfile, EmployerProfile, UniversityStaffProfile, University, Company, Resume, Connection
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.sites.shortcuts import get_current_site
+from django.core.mail import send_mail
+from django.conf import settings
 
 class UniversitySerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,6 +51,23 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.user_type
 
     def get_student_profile(self, obj):
+        try:
+            profile = obj.student_profile
+            if profile:
+                return {
+                    'user': profile.user.id,
+                    'university': profile.university.id if profile.university else None,
+                    'major': profile.major,
+                    'graduation_year': profile.graduation_year,
+                    'gpa': profile.gpa,
+                    'skills': profile.skills,
+                    'interests': profile.interests,
+                    'career_preferences': profile.career_preferences,
+                    'created_at': profile.created_at.isoformat() if profile.created_at else None,
+                    'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,
+                }
+        except:
+            pass
         return None
     def get_employer_profile(self, obj):
         try:
@@ -60,6 +83,18 @@ class UserSerializer(serializers.ModelSerializer):
             pass
         return None
     def get_university_staff_profile(self, obj):
+        try:
+            profile = obj.university_staff_profile
+            if profile:
+                return {
+                    'user': profile.user.id,
+                    'university': profile.university.id if profile.university else None,
+                    'role': profile.role,
+                    'created_at': profile.created_at.isoformat() if profile.created_at else None,
+                    'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,
+                }
+        except:
+            pass
         return None
 
 class UniversityStaffProfileSerializer(serializers.ModelSerializer):
@@ -352,3 +387,15 @@ class CompanySerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'logo_url', 'description', 'website', 'industry', 'location', 'size', 'social_links', 'gallery_urls'
         ) 
+
+class ConnectionSerializer(serializers.ModelSerializer):
+    employer_name = serializers.CharField(source='employer.full_name', read_only=True)
+    employer_email = serializers.CharField(source='employer.email', read_only=True)
+    student_name = serializers.CharField(source='student.full_name', read_only=True)
+    student_email = serializers.CharField(source='student.email', read_only=True)
+    
+    class Meta:
+        model = Connection
+        fields = ('id', 'employer', 'student', 'message', 'status', 'created_at', 'updated_at', 
+                 'employer_name', 'employer_email', 'student_name', 'student_email')
+        read_only_fields = ('id', 'status', 'created_at', 'updated_at', 'employer_name', 'employer_email', 'student_name', 'student_email') 

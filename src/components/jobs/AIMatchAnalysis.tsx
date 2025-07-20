@@ -607,8 +607,8 @@ export function AIMatchAnalysis({
           <CardTitle className="text-base font-semibold">Skills Breakdown</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 text-gray-800 text-sm">
-          <div className="mb-2">{shared.skills_analysis.summary}</div>
-          <SkillsCard analysis={shared.skills_analysis} />
+          <div className="mb-2">{shared.skills_analysis?.summary || 'Skills analysis not available'}</div>
+          {shared.skills_analysis && <SkillsCard analysis={shared.skills_analysis} />}
         </CardContent>
       </Card>
     );
@@ -620,8 +620,8 @@ export function AIMatchAnalysis({
           <CardTitle className="text-base font-semibold">Experience Breakdown</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 text-gray-800 text-sm">
-          <div className="mb-2">{shared.experience_analysis.summary}</div>
-          <ExperienceCard analysis={shared.experience_analysis} />
+          <div className="mb-2">{shared.experience_analysis?.summary || 'Experience analysis not available'}</div>
+          {shared.experience_analysis && <ExperienceCard analysis={shared.experience_analysis} />}
         </CardContent>
       </Card>
     );
@@ -633,8 +633,8 @@ export function AIMatchAnalysis({
           <CardTitle className="text-base font-semibold">Culture & Team Fit</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 text-gray-800 text-sm">
-          <div className="mb-2">{shared.culture_fit_analysis.summary}</div>
-          <CultureFitCard analysis={shared.culture_fit_analysis} />
+          <div className="mb-2">{shared.culture_fit_analysis?.summary || 'Culture fit analysis not available'}</div>
+          {shared.culture_fit_analysis && <CultureFitCard analysis={shared.culture_fit_analysis} />}
         </CardContent>
       </Card>
     );
@@ -646,8 +646,8 @@ export function AIMatchAnalysis({
           <CardTitle className="text-base font-semibold">Growth Potential</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 text-gray-800 text-sm">
-          <div className="mb-2">{shared.growth_potential_analysis.summary}</div>
-          <GrowthPotentialCard analysis={shared.growth_potential_analysis} />
+          <div className="mb-2">{shared.growth_potential_analysis?.summary || 'Growth potential analysis not available'}</div>
+          {shared.growth_potential_analysis && <GrowthPotentialCard analysis={shared.growth_potential_analysis} />}
         </CardContent>
       </Card>
     );
@@ -659,7 +659,7 @@ export function AIMatchAnalysis({
           <CardTitle className="text-base font-semibold">Preferences Match</CardTitle>
         </CardHeader>
         <CardContent className="pt-0 text-gray-800 text-sm">
-          <PreferencesCard preferences={shared.preferences_analysis} />
+          {shared.preferences_analysis && <PreferencesCard preferences={shared.preferences_analysis} />}
         </CardContent>
       </Card>
     );

@@ -1,286 +1,277 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
-  Building,
-  Users,
-  Calendar,
-  MapPin,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Search,
-  Filter,
-  ChevronRight,
-  Briefcase
+  Building, Calendar, Users, FileText, TrendingUp, 
+  Plus, BarChart3, Clock, MapPin, ExternalLink
 } from 'lucide-react';
+import { universityService, CareerFair } from '../../services/universityService';
+import { useToast } from '../../hooks/useToast';
 
-interface Company {
-  id: string;
-  name: string;
-  logo: string;
-  industry: string;
-  boothPreference: string;
-  status: 'approved' | 'pending' | 'rejected';
-  openPositions: number;
-  previousParticipant: boolean;
-}
+export default function CareerFairOversight() {
+  const [careerFairs, setCareerFairs] = useState<CareerFair[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { addToast } = useToast();
 
-const mockCompanies: Company[] = [
-  {
-    id: '1',
-    name: 'TechCorp',
-    logo: 'https://images.unsplash.com/photo-1549924231-f129b911e442?w=200&h=200&fit=crop',
-    industry: 'Technology',
-    boothPreference: 'Main Hall',
-    status: 'approved',
-    openPositions: 12,
-    previousParticipant: true,
-  },
-  {
-    id: '2',
-    name: 'InnovateLabs',
-    logo: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=200&h=200&fit=crop',
-    industry: 'Software',
-    boothPreference: 'Innovation Zone',
-    status: 'pending',
-    openPositions: 8,
-    previousParticipant: false,
-  },
-];
+  useEffect(() => {
+    loadCareerFairs();
+  }, []);
 
-export function CareerFairOversight() {
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const loadCareerFairs = async () => {
+    try {
+      const data = await universityService.getCareerFairs();
+      setCareerFairs(data);
+    } catch (error) {
+      addToast({
+        title: 'Error',
+        description: 'Failed to load career fairs data.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stats = {
+    totalCareerFairs: careerFairs.length,
+    totalEmployers: careerFairs.reduce((sum, fair) => sum + fair.registeredEmployers, 0),
+    totalStudents: careerFairs.reduce((sum, fair) => sum + fair.registeredStudents, 0),
+    totalApplications: careerFairs.reduce((sum, fair) => sum + fair.totalApplications, 0)
+  };
+
+  const handleCreateCareerFair = () => {
+    addToast({
+      title: 'Create Career Fair',
+      description: 'Career fair creation feature coming soon.',
+    });
+  };
+
+  const handleViewAnalytics = (fair: CareerFair) => {
+    addToast({
+      title: 'View Analytics',
+      description: `Opening analytics for ${fair.name}`,
+    });
+  };
+
+  const handleManageDetails = (fair: CareerFair) => {
+    addToast({
+      title: 'Manage Details',
+      description: `Managing details for ${fair.name}`,
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      upcoming: { color: 'bg-blue-100 text-blue-800', icon: Clock },
+      ongoing: { color: 'bg-green-100 text-green-800', icon: TrendingUp },
+      completed: { color: 'bg-gray-100 text-gray-800', icon: Calendar }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.completed;
+    const Icon = config.icon;
+    
+    return (
+      <Badge className={config.color}>
+        <Icon className="h-3 w-3 mr-1" />
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading career fairs...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6"
-    >
+    <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-xl p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Career Fair Management</h1>
-            <p className="mt-1 text-gray-500">Oversee employer participation and booth assignments</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <select className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500">
-              <option>Spring Career Fair 2024</option>
-              <option>Fall Career Fair 2024</option>
-            </select>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Career Fair Management</h1>
+          <p className="text-gray-600 mt-2">Manage and oversee career fairs for your university</p>
         </div>
+        <Button onClick={handleCreateCareerFair} className="bg-indigo-600 hover:bg-indigo-700">
+          <Plus className="h-4 w-4 mr-2" />
+          Create Career Fair
+        </Button>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {[
-          {
-            label: 'Total Companies',
-            value: '45',
-            change: '+8',
-            icon: Building,
-            color: 'bg-blue-100 text-blue-600',
-          },
-          {
-            label: 'Registered Students',
-            value: '850',
-            change: '+120',
-            icon: Users,
-            color: 'bg-green-100 text-green-600',
-          },
-          {
-            label: 'Available Booths',
-            value: '15',
-            change: '-5',
-            icon: MapPin,
-            color: 'bg-purple-100 text-purple-600',
-          },
-          {
-            label: 'Days Until Event',
-            value: '12',
-            change: '',
-            icon: Calendar,
-            color: 'bg-yellow-100 text-yellow-600',
-          },
-        ].map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-xl p-6"
-            >
-              <div className="flex items-center justify-between">
-                <div className={`p-3 rounded-lg ${stat.color}`}>
-                  <Icon className="h-6 w-6" />
-                </div>
-                {stat.change && (
-                  <span className={`text-sm font-medium ${
-                    stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                  }`}>{stat.change}</span>
-                )}
+      {/* Dashboard Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-600">Total Career Fairs</p>
+                <p className="text-2xl font-bold text-blue-900">{stats.totalCareerFairs}</p>
               </div>
-              <p className="mt-3 text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-white rounded-xl p-6">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="w-full sm:w-auto flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search companies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div className="flex items-center space-x-4">
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="all">All Status</option>
-              <option value="approved">Approved</option>
-              <option value="pending">Pending</option>
-              <option value="rejected">Rejected</option>
-            </select>
-            <button className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
-              <Filter className="h-4 w-4 mr-2" />
-              More Filters
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Companies List */}
-      <div className="grid grid-cols-1 gap-6">
-        {mockCompanies.map((company) => (
-          <motion.div
-            key={company.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl p-6 hover:shadow-lg transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-4">
-                <img
-                  src={company.logo}
-                  alt={company.name}
-                  className="w-12 h-12 rounded-lg object-cover"
-                />
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">{company.name}</h3>
-                  <p className="text-sm text-gray-500">{company.industry}</p>
-                  
-                  <div className="mt-2 flex items-center space-x-4">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <MapPin className="h-4 w-4 mr-1.5" />
-                      Booth Preference: {company.boothPreference}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Briefcase className="h-4 w-4 mr-1.5" />
-                      {company.openPositions} Open Positions
-                    </div>
-                  </div>
-
-                  {company.previousParticipant && (
-                    <div className="mt-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Previous Participant
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  company.status === 'approved'
-                    ? 'bg-green-100 text-green-800'
-                    : company.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {company.status.charAt(0).toUpperCase() + company.status.slice(1)}
-                </span>
-                <button
-                  onClick={() => setSelectedCompany(company)}
-                  className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Manage
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </button>
-              </div>
+              <Building className="h-8 w-8 text-blue-600" />
             </div>
+          </CardContent>
+        </Card>
 
-            {selectedCompany?.id === company.id && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="mt-6 pt-6 border-t"
-              >
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Booth Assignment</label>
-                    <select className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                      <option>Main Hall - A1</option>
-                      <option>Main Hall - A2</option>
-                      <option>Innovation Zone - B1</option>
-                      <option>Innovation Zone - B2</option>
-                    </select>
-                  </div>
+        <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-600">Total Employers</p>
+                <p className="text-2xl font-bold text-green-900">{stats.totalEmployers}</p>
+                <p className="text-xs text-green-600 mt-1">+12% from last month</p>
+              </div>
+              <Users className="h-8 w-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Application Status</label>
-                    <div className="mt-2 flex items-center space-x-4">
-                      <button className="flex items-center px-4 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200">
-                        <CheckCircle className="h-4 w-4 mr-1.5" />
-                        Approve
-                      </button>
-                      <button className="flex items-center px-4 py-2 text-sm font-medium text-red-700 bg-red-100 rounded-lg hover:bg-red-200">
-                        <XCircle className="h-4 w-4 mr-1.5" />
-                        Reject
-                      </button>
-                      <button className="flex items-center px-4 py-2 text-sm font-medium text-yellow-700 bg-yellow-100 rounded-lg hover:bg-yellow-200">
-                        <AlertCircle className="h-4 w-4 mr-1.5" />
-                        Request More Info
-                      </button>
+        <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-600">Total Students</p>
+                <p className="text-2xl font-bold text-purple-900">{stats.totalStudents}</p>
+                <p className="text-xs text-purple-600 mt-1">+8% from last month</p>
+              </div>
+              <Users className="h-8 w-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-orange-600">Total Applications</p>
+                <p className="text-2xl font-bold text-orange-900">{stats.totalApplications}</p>
+                <p className="text-xs text-orange-600 mt-1">+15% from last month</p>
+              </div>
+              <FileText className="h-8 w-8 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Career Fairs Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-indigo-600" />
+              Career Fairs
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={() => handleViewAnalytics({} as CareerFair)}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {careerFairs.length === 0 ? (
+            <div className="text-center py-12">
+              <Building className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No career fairs yet</h3>
+              <p className="text-gray-600">Create your first career fair to get started using the button above.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {careerFairs.map((fair) => (
+                <div key={fair.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{fair.name}</h3>
+                          <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center gap-1 text-gray-600">
+                              <Calendar className="h-4 w-4" />
+                              <span className="text-sm">{formatDate(fair.date)}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-600">
+                              <MapPin className="h-4 w-4" />
+                              <span className="text-sm">University Campus</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(fair.status)}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewAnalytics(fair)}
+                            className="flex items-center gap-1"
+                          >
+                            <BarChart3 className="h-4 w-4" />
+                            Analytics
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <span className="text-sm text-gray-600">Employers:</span>
+                            <span className="text-sm font-medium ml-1">{fair.registeredEmployers}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <span className="text-sm text-gray-600">Students:</span>
+                            <span className="text-sm font-medium ml-1">{fair.registeredStudents}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <span className="text-sm text-gray-600">Applications:</span>
+                            <span className="text-sm font-medium ml-1">{fair.totalApplications}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleManageDetails(fair)}
+                          className="flex items-center gap-1"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Manage Details
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          Manage Registrations
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex items-center gap-1">
+                          <BarChart3 className="h-4 w-4" />
+                          Reports
+                        </Button>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      onClick={() => setSelectedCompany(null)}
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => setSelectedCompany(null)}
-                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
                 </div>
-              </motion.div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-    </motion.div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

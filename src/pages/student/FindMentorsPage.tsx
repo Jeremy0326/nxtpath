@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Mail, MapPin, Search, Users, GraduationCap, Clock, Building, ExternalLink } from 'lucide-react';
-import { api } from '../../services/api';
+import api from '../../lib/axios';
 import { useToast } from '../../hooks/useToast';
 import { colors, componentStyles, typography, layout } from '../../lib/design-system';
 
@@ -129,16 +129,16 @@ export function FindMentorsPage() {
     >
       {/* Page Header */}
       <div className="bg-white border-b border-gray-100 mb-6">
-        <div className={`${layout.container} py-8`}>
-          <div className="mb-2">
-            <h1 className={`${typography.fontSize['3xl']} font-bold text-gray-900`}>Find Mentors</h1>
-            <p className="text-gray-500 mt-1">Connect with university staff and career advisors for personalized guidance</p>
+        <div className={`${layout.container} py-12`}>
+          <div className="mb-4">
+            <h1 className={`text-4xl font-bold text-gray-900 mb-3`}>Find Mentors</h1>
+            <p className="text-lg text-gray-600">Connect with university staff and career advisors for personalized guidance</p>
           </div>
           
-          <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mt-8">
             <div className="flex items-center space-x-4">
               <div className={`${componentStyles.badge.base} ${componentStyles.badge.variants.indigo} flex items-center`}>
-                <Users className="h-3.5 w-3.5 mr-1.5" />
+                <Users className="h-4 w-4 mr-2" />
                 {staff.length} Mentors Available
               </div>
             </div>

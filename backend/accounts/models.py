@@ -207,3 +207,26 @@ class UniversityJoinRequest(models.Model):
 
     def __str__(self):
         return f"Join request from {self.user.email} to {self.university.name}"
+
+
+class Connection(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        ACCEPTED = 'ACCEPTED', 'Accepted'
+        REJECTED = 'REJECTED', 'Rejected'
+        WITHDRAWN = 'WITHDRAWN', 'Withdrawn'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    employer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_connections')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_connections')
+    message = models.TextField(blank=True, help_text="Optional message from employer to student")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('employer', 'student')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Connection from {self.employer.email} to {self.student.email} ({self.status})"

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, Calendar, Share2, ArrowRight, MapPin, Briefcase } from 'lucide-react';
-import type { Job } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 
 interface ApplicationSuccessModalProps {
   isOpen: boolean;

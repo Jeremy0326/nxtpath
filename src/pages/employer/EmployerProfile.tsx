@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import api from '../../lib/axios';
-import { ProfilePictureUpload } from '@/components/profile/ProfilePictureUpload';
+import { ProfilePictureUpload } from '@/components/common/ProfilePictureUpload';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 function Tabs({ tabs, activeTab, setActiveTab }: { tabs: string[]; activeTab: string; setActiveTab: (tab: string) => void }) {
   return (
@@ -23,6 +24,7 @@ function Tabs({ tabs, activeTab, setActiveTab }: { tabs: string[]; activeTab: st
 }
 
 export function EmployerProfile() {
+  const { user: authUser } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,28 +43,21 @@ export function EmployerProfile() {
   const { handleError } = useErrorHandler();
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get('profile/');
-        const employerProfile = res.data.employer_profile || {};
-        setProfile(res.data);
-        setProfilePicUrl(res.data.profile_picture_url);
-        setForm({
-          full_name: res.data.full_name || '',
-          email: res.data.email || '',
-          role: employerProfile.role || '',
-          is_company_admin: employerProfile.is_company_admin || false,
-        });
-      } catch (err) {
-        handleError(err, 'Failed to load profile');
-        setError('Failed to load profile');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, []);
+    if (authUser) {
+      const employerProfile = authUser.employer_profile || {};
+      setProfile(authUser);
+      setProfilePicUrl(authUser.profile_picture_url);
+      setForm({
+        full_name: authUser.full_name || '',
+        email: authUser.email || '',
+        role: (employerProfile as any).role || '',
+        is_company_admin: (employerProfile as any).is_company_admin || false,
+      });
+      setLoading(false);
+    } else {
+      setLoading(false);
+    }
+  }, [authUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;

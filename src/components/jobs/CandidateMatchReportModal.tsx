@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X } from 'lucide-react';
 import { jobService } from '@/services/jobService';
@@ -76,23 +76,16 @@ export const CandidateMatchReportModal: React.FC<CandidateMatchReportModalProps>
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 gap-0">
-        <div className="p-6 flex justify-between items-center border-b">
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 gap-0 bg-white">
+        <DialogTitle className="sr-only">AI Match Analysis</DialogTitle>
+        <DialogDescription className="sr-only">Analysis of candidate's resume against the job description.</DialogDescription>
+        <div className="p-6 flex justify-between items-center border-b bg-white">
             <div>
-                <DialogTitle className="text-2xl font-bold">AI Match Analysis</DialogTitle>
+                <h2 className="text-2xl font-bold">AI Match Analysis</h2>
                 <p className="text-gray-600">Analysis of candidate's resume against the job description.</p>
             </div>
-            <div className="flex items-center gap-2">
-                 <Button variant="outline" size="sm" onClick={() => fetchReport(true)} disabled={isLoading || isPolling}>
-                    <RefreshCw className={`h-4 w-4 ${isLoading || isPolling ? 'animate-spin' : ''}`} />
-                    <span className="ml-2">Refresh</span>
-                </Button>
-                <Button variant="ghost" size="icon" onClick={onClose}>
-                    <X className="h-5 w-5" />
-                </Button>
-            </div>
         </div>
-        <div className="flex-grow overflow-auto p-6">
+        <div className="flex-grow overflow-auto p-6 bg-white">
           {processing ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <RefreshCw className="h-10 w-10 text-indigo-600 animate-spin mb-4" />

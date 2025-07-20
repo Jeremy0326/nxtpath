@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Sparkles, CheckCircle, AlertCircle, Star, TrendingUp, Award, BookOpen, Target, BarChart2 } from "lucide-react";
-import { Job, AdvancedAnalysis } from "../../types/job";
+import type { ExtendedJob } from "../../types/components";
 
 interface JobMatchDetailsModalProps {
   isOpen: boolean;

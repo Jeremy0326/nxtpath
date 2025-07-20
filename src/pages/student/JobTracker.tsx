@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Inbox } from 'lucide-react';
-import { ApplicationStats } from '../../components/student/job-tracker/ApplicationStats';
-import { ApplicationCard } from '../../components/student/job-tracker/ApplicationCard';
+import { ApplicationStats } from '../../components/student/ApplicationStats';
+import { ApplicationCard } from '../../components/student/ApplicationCard';
 import { useApplicationStore } from '../../stores/applicationStore';
 import { useToast } from '../../hooks/useToast';
-import type { Application, Job } from '../../types/job';
+import type { Job } from '../../types/models';
+import type { FrontendApplication } from '../../types/components';
 import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import { JobDetailsModal } from '../../components/jobs/JobDetailsModal';
 
@@ -25,7 +26,7 @@ export function JobTracker() {
 
   // States for the new modals
   const [jobToView, setJobToView] = useState<Job | null>(null);
-  const [applicationToWithdraw, setApplicationToWithdraw] = useState<Application | null>(null);
+  const [applicationToWithdraw, setApplicationToWithdraw] = useState<FrontendApplication | null>(null);
 
 
   useEffect(() => {
@@ -61,13 +62,13 @@ export function JobTracker() {
     }
   };
 
-  const handleStartInterview = (app: Application) => {
+  const handleStartInterview = (app: FrontendApplication) => {
     navigate(`/student/interview/${app.id}`);
   };
 
 
 
-  const handleViewJobDetails = (app: Application) => {
+  const handleViewJobDetails = (app: FrontendApplication) => {
     setJobToView(app.job);
   };
 

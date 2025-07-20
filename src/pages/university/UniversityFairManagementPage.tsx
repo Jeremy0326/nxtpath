@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Calendar, Building, Plus, Settings } from 'lucide-react';
 import { careerFairService } from '../../services/careerFairService';
-import { CareerFair } from '../../types/career-fair';
+import type { FrontendCareerFair } from '../../types/components';
 
 export function UniversityFairManagementPage() {
-  const [fairs, setFairs] = useState<CareerFair[]>([]);
+  const [fairs, setFairs] = useState<FrontendCareerFair[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -56,7 +56,7 @@ export function UniversityFairManagementPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-white rounded-xl border border-gray-200/80 shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col"
                 >
-                  <img src={fair.banner_image_url || 'https://via.placeholder.com/400x200'} alt={fair.title} className="w-full h-48 object-cover"/>
+                  <img src={fair.banner_image_url || '/placeholder.svg'} alt={fair.title} className="w-full h-48 object-cover"/>
                   <div className="p-6 flex-grow">
                     <h3 className="text-xl font-bold text-gray-900">{fair.title}</h3>
                     <p className="text-sm text-gray-500">{fair.host_university.name}</p>

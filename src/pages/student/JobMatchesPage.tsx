@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { jobService } from '../../services/jobService';
-import { Job } from '../../types/job';
+import type { ExtendedJob } from '../../types/components';
 import { Briefcase, MapPin, Star, Loader2, Lightbulb, CheckCircle, XCircle, ChevronDown, ChevronUp, Building } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { InterviewReport } from '../../components/interview/InterviewReport';
 
 const JobMatchesPage: React.FC = () => {
-  const [matchedJobs, setMatchedJobs] = useState<Job[]>([]);
+  const [matchedJobs, setMatchedJobs] = useState<ExtendedJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [matchType, setMatchType] = useState<'standard' | 'ai'>('ai');
@@ -53,7 +53,7 @@ const JobMatchesPage: React.FC = () => {
     setMatchType(prevType => prevType === 'standard' ? 'ai' : 'standard');
   };
 
-  const handleStartInterview = async (job: Job) => {
+  const handleStartInterview = async (job: ExtendedJob) => {
     setInterviewLoading(true);
     setInterviewError(null);
     try {

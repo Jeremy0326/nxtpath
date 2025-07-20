@@ -31,8 +31,15 @@ from django.http import HttpResponse
 import tempfile
 import subprocess
 import json
-from google.cloud import speech, texttospeech
-from google.cloud import storage
+try:
+    from google.cloud import speech, texttospeech
+    from google.cloud import storage
+    GOOGLE_CLOUD_AVAILABLE = True
+except ImportError:
+    GOOGLE_CLOUD_AVAILABLE = False
+    speech = None
+    texttospeech = None
+    storage = None
 import wave
 import io
 
@@ -516,7 +523,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         # Use Google Cloud STT if available, else fallback
         try:
             google_credentials_available = (
-                hasattr(settings, 'GOOGLE_APPLICATION_CREDENTIALS')
+                GOOGLE_CLOUD_AVAILABLE
+                and hasattr(settings, 'GOOGLE_APPLICATION_CREDENTIALS')
                 and settings.GOOGLE_APPLICATION_CREDENTIALS
                 and os.path.exists(settings.GOOGLE_APPLICATION_CREDENTIALS)
             )
@@ -530,7 +538,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             return Response({'error': f'Speech-to-text failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _google_stt(self, audio_file):
-        """Google Cloud Speech-to-Text implementation"""
+        """Google Cloud Speech-to-Text implementation with enhanced tech term recognition"""
         client = speech.SpeechClient()
         audio_content = audio_file.read()
         
@@ -553,14 +561,57 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             sample_rate = 16000
         
         audio = speech.RecognitionAudio(content=audio_content)
+        
+        # Enhanced configuration for better tech term recognition
         config = speech.RecognitionConfig(
             encoding=encoding,
             sample_rate_hertz=sample_rate,
             language_code="en-US",
             enable_automatic_punctuation=True,
             enable_word_time_offsets=False,
-            model="latest_long",
             use_enhanced=True,
+            # Add speech adaptation for better tech term recognition
+            speech_contexts=[{
+                "phrases": [
+                    # Programming languages and frameworks
+                    "React", "Django", "Python", "JavaScript", "TypeScript", "Node.js", "Next.js", "Vue.js", "Angular",
+                    "Java", "C++", "C#", "PHP", "Ruby", "Go", "Rust", "Swift", "Kotlin", "Scala",
+                    "HTML", "CSS", "SQL", "MongoDB", "PostgreSQL", "MySQL", "Redis", "GraphQL", "REST API",
+                    # Cloud and DevOps
+                    "AWS", "Azure", "Google Cloud", "Docker", "Kubernetes", "Jenkins", "GitHub", "GitLab", "CI/CD",
+                    "Microservices", "API Gateway", "Load Balancer", "Auto Scaling", "Serverless", "Lambda",
+                    # AI and ML
+                    "Machine Learning", "Deep Learning", "Neural Networks", "TensorFlow", "PyTorch", "Scikit-learn",
+                    "Computer Vision", "Natural Language Processing", "NLP", "OpenAI", "GPT", "Gemini", "Claude",
+                    "MediaPipe", "OpenCV", "Pandas", "NumPy", "Matplotlib", "Jupyter",
+                    # Web technologies
+                    "HTTP", "HTTPS", "WebSocket", "WebRTC", "Progressive Web App", "PWA", "Service Worker",
+                    "Local Storage", "Session Storage", "IndexedDB", "WebAssembly", "WebGL", "Canvas",
+                    # Database and data
+                    "Database", "Data Warehouse", "ETL", "Data Pipeline", "Big Data", "Hadoop", "Spark",
+                    "Data Analytics", "Business Intelligence", "BI", "Data Visualization", "Tableau", "Power BI",
+                    # Software development
+                    "Agile", "Scrum", "Kanban", "Waterfall", "Test-Driven Development", "TDD", "BDD",
+                    "Code Review", "Pair Programming", "Refactoring", "Design Patterns", "SOLID Principles",
+                    "Object-Oriented Programming", "OOP", "Functional Programming", "FP", "Event-Driven Architecture",
+                    # Common tech terms
+                    "API", "SDK", "IDE", "CLI", "GUI", "UI", "UX", "Frontend", "Backend", "Full-stack",
+                    "Mobile App", "Web App", "Desktop App", "Cross-platform", "Native", "Hybrid",
+                    "Performance", "Scalability", "Security", "Authentication", "Authorization", "Encryption",
+                    "Backup", "Recovery", "Monitoring", "Logging", "Debugging", "Testing", "Deployment",
+                    # Company and project specific terms
+                    "Hilti", "HR System", "Hiring System", "Recruitment", "Candidate", "Interview",
+                    "Resume", "CV", "Portfolio", "Project", "Team", "Collaboration", "Leadership",
+                    "Problem Solving", "Critical Thinking", "Communication", "Presentation", "Documentation"
+                ],
+                "boost": 15.0  # Boost the importance of these phrases
+            }],
+            # Enable additional features for better accuracy
+            enable_word_confidence=True,
+            enable_speaker_diarization=False,
+            diarization_speaker_count=1,
+            # Use a more appropriate model for technical content
+            model="latest_long"
         )
         
         response = client.recognize(config=config, audio=audio)
@@ -571,16 +622,28 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         
         transcript = ""
         confidence = 0.0
+        word_confidence = []
+        
         for result in response.results:
             transcript += result.alternatives[0].transcript + " "
             confidence = max(confidence, result.alternatives[0].confidence)
+            
+            # Collect word-level confidence for debugging
+            if hasattr(result.alternatives[0], 'words'):
+                for word_info in result.alternatives[0].words:
+                    word_confidence.append({
+                        'word': word_info.word,
+                        'confidence': word_info.confidence
+                    })
         
         transcript = transcript.strip()
         
         return Response({
             'transcript': transcript,
             'confidence': confidence,
-            'language_code': 'en-US'
+            'language_code': 'en-US',
+            'word_confidence': word_confidence[:10],  # Return first 10 words for debugging
+            'method': 'google_cloud_enhanced'
         }, status=status.HTTP_200_OK)
 
     def _fallback_stt(self, audio_file):
@@ -745,13 +808,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                           status=status.HTTP_400_BAD_REQUEST)
         try:
             # Try Google Cloud TTS first
-            if hasattr(settings, 'GOOGLE_APPLICATION_CREDENTIALS') and settings.GOOGLE_APPLICATION_CREDENTIALS:
+            if GOOGLE_CLOUD_AVAILABLE and hasattr(settings, 'GOOGLE_APPLICATION_CREDENTIALS') and settings.GOOGLE_APPLICATION_CREDENTIALS:
                 return self._google_tts(text, voice_name, pk)
             else:
                 # Fallback to local TTS
                 return self._fallback_tts(text, pk)
         except Exception as e:
-            logging.error(f"TTS error: {str(e)}")
+            logger.error(f"TTS error: {str(e)}")
             return Response({'error': f'Text-to-speech failed: {str(e)}'}, 
                           status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

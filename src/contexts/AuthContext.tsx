@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthState, User, LoginCredentials, RegisterCredentials, UserRole } from '../types/auth';
 import api from '../lib/axios';
@@ -22,8 +22,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const navigate = useNavigate();
+  const hasCheckedAuth = useRef(false);
 
   useEffect(() => {
+    // Prevent duplicate API calls
+    if (hasCheckedAuth.current) return;
+    hasCheckedAuth.current = true;
+
     // Check token validity and restore session
     const token = localStorage.getItem('access_token');
     if (token) {
