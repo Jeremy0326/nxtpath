@@ -81,3 +81,6 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+
+backend/google-stt-key.json
+backend/.env
