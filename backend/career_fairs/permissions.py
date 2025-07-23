@@ -9,13 +9,11 @@ class IsHostUniversityOrReadOnly(permissions.BasePermission):
         # Read permissions are allowed for any request,
         # so we'll always allow GET, HEAD or OPTIONS requests.
         if request.method in permissions.SAFE_METHODS:
-            return True
-
-        # Write permissions are only allowed to the host university staff.
-        if not request.user.is_authenticated or not hasattr(request.user, 'universitystaffprofile'):
+            return True        # Write permissions are only allowed to the host university staff.
+        if not request.user.is_authenticated or not hasattr(request.user, 'university_staff_profile'):
             return False
             
-        return obj.host_university == request.user.universitystaffprofile.university 
+        return obj.host_university == request.user.university_staff_profile.university
  
  
  

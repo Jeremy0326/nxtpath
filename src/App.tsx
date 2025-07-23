@@ -6,14 +6,17 @@ import { JobSearchPage } from './pages/student/JobSearchPage';
 import { JobApplicationPage } from './pages/student/JobApplicationPage';
 import { JobTracker } from './pages/student/JobTracker';
 import { InterviewPage } from './pages/student/InterviewPage';
-import { CareerFairPage } from './pages/student/CareerFairPage';
+import { StudentCareerFairs } from "./pages/student/StudentCareerFairs";
+import { StudentFairDetails } from "./pages/student/StudentFairDetails";
 import { ResumeManagement } from './pages/student/ResumeManagement';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { FindMentorsPage } from './pages/student/FindMentorsPage';
 import { UniversityDashboard } from './pages/university/UniversityDashboard';
+import { UniversityProfile } from './pages/university/UniversityProfile';
 import { EmployerDashboard } from './pages/employer/EmployerDashboard';
+import { EmployerProfile } from './pages/employer/EmployerProfile';
 import { CareerFairProvider } from './contexts/CareerFairContext';
-import CareerFairOversight from "./pages/university/CareerFairOversight";
+import { CareerFairManagement } from "./pages/university/CareerFairManagement";
 import { EmployerJobs } from "./pages/employer/EmployerJobs";
 import { EmployerJobApplicants } from './pages/employer/EmployerJobApplicants';
 import { CandidatesKanbanPage } from './pages/employer/CandidatesKanbanPage';
@@ -27,11 +30,9 @@ import { PasswordResetConfirm } from './components/auth/PasswordResetConfirm';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import { LandingPage } from './pages/landing/LandingPage';
-import ProfilePage from './pages/employer/ProfilePage';
 import { ToastContainer } from './components/ui/Toast';
 import { useToast } from './hooks/useToast';
 import { EmailVerificationPage } from './components/auth/EmailVerificationPage';
-import { CareerFairListPage } from './pages/student/CareerFairListPage';
 import { FairManagementPage } from './pages/employer/FairManagementPage';
 import { BoothSetupPage } from './pages/employer/BoothSetupPage';
 import { FairDiscoveryPage } from './pages/employer/FairDiscoveryPage';
@@ -40,7 +41,12 @@ import AIInsightsPage from "./pages/university/AIInsights";
 import Students from "./pages/university/Students";
 import { Staff } from "./pages/university/Staff";
 import UniversityManagement from "./pages/university/UniversityManagement";
-import { UniversityProfile } from "./pages/university/UniversityProfile";
+import { FairManagement } from "./pages/university/FairManagement";
+import { RegistrationManagement } from "./pages/university/RegistrationManagement";
+import { FairReports } from "./pages/university/FairReports";
+import { FairAnalytics } from "./pages/university/FairAnalytics";
+import { BoothManagement } from "./pages/university/BoothManagement";
+import { StudentInterests } from "./pages/university/StudentInterests";
 
 function AppRoutes() {
   const { toasts, removeToast } = useToast();
@@ -68,13 +74,13 @@ function AppRoutes() {
                   <Route path="jobs/:jobId/apply" element={<JobApplicationPage />} />
                   <Route path="applications" element={<JobTracker />} />
                   <Route path="interview/:applicationId" element={<InterviewPage />} />
-                  <Route path="career-fairs" element={<CareerFairListPage />} />
-                  <Route path="career-fairs/:fairId" element={<CareerFairPage />} />
+                  <Route path="career-fairs" element={<StudentCareerFairs />} />
+                  <Route path="career-fairs/:fairId" element={<StudentFairDetails />} />
                   <Route path="career-fairs/list" element={<Navigate to="/student/career-fairs" replace />} />
                   <Route path="portfolio" element={<StudentProfile />} />
                   <Route path="resume" element={<ResumeManagement />} />
                   <Route path="mentorship" element={<FindMentorsPage />} />
-                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="profile" element={<StudentProfile />} />
                   <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
                 </Routes>
               </Layout>
@@ -93,9 +99,16 @@ function AppRoutes() {
                   <Route path="ai-insights" element={<AIInsightsPage />} />
                   <Route path="students" element={<Students />} />
                   <Route path="staff" element={<Staff />} />
-                  <Route path="career-fair" element={<CareerFairOversight />} />
+                  <Route path="career-fair" element={<CareerFairManagement />} />
+                  <Route path="fairs/:fairId/manage" element={<FairManagement />} />
+                  <Route path="fairs/:fairId/booths" element={<BoothManagement />} />
+                  <Route path="fairs/:fairId/registrations" element={<RegistrationManagement />} />
+                  <Route path="fairs/:fairId/interests" element={<StudentInterests />} />
+                  <Route path="fairs/:fairId/reports" element={<FairReports />} />
+                  <Route path="fairs/:fairId/analytics" element={<FairAnalytics />} />
                   <Route path="management" element={<UniversityManagement />} />
                   <Route path="profile" element={<UniversityProfile />} />
+                  <Route path="interests" element={<StudentInterests />} />
                   <Route path="*" element={<Navigate to="/university/dashboard" replace />} />
                 </Routes>
               </Layout>
@@ -122,7 +135,7 @@ function AppRoutes() {
                     <Route path="fairs/:fairId/booth/:boothId" element={<BoothSetupPage />} />
                     <Route path="settings/profile" element={<CompanyProfile />} />
                     <Route path="settings/team" element={<TeamMembers />} />
-                    <Route path="profile" element={<ProfilePage />} />
+                    <Route path="profile" element={<EmployerProfile />} />
                     <Route path="*" element={<Navigate to="/employer/dashboard" replace />} />
                   </Routes>
                 </EmployerLayout>

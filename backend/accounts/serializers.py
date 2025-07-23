@@ -138,7 +138,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             email=validated_data['email'],
             full_name=validated_data.get('full_name', ''),
-            user_type=validated_data['user_type']
+            user_type=validated_data['user_type'],
+            is_verified=True  # Automatically verify user upon registration
         )
         user.set_password(validated_data['password'])
         user.save()

@@ -546,6 +546,78 @@ class UniversityCareerFairsView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    def post(self, request, *args, **kwargs):
+        """
+        Create a new career fair for the university.
+        """
+        university_staff = getattr(request.user, 'university_staff_profile', None)
+        
+        # If no university staff profile exists, return error
+        if not university_staff:
+            return Response(
+                {"error": "User is not associated with a university."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        university = university_staff.university
+
+        try:
+            # Extract data from request
+            title = request.data.get('title')
+            start_date = request.data.get('start_date')
+            end_date = request.data.get('end_date', start_date)  # Default to single day
+            location = request.data.get('location', '')
+            description = request.data.get('description', '')
+
+            # Validate required fields
+            if not title or not start_date:
+                return Response(
+                    {"error": "Title and start date are required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Parse dates if they're strings
+            from datetime import datetime
+            if isinstance(start_date, str):
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            if isinstance(end_date, str):
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+            # Create the career fair
+            career_fair = CareerFair.objects.create(
+                title=title,
+                start_date=start_date,
+                end_date=end_date,
+                location=location,
+                description=description,
+                host_university=university,
+                is_active=True
+            )
+
+            # Return the created fair data in the same format as GET
+            return Response({
+                'id': str(career_fair.id),
+                'name': career_fair.title,
+                'date': career_fair.start_date.isoformat(),
+                'status': 'upcoming',
+                'registeredEmployers': 0,
+                'registeredStudents': 0,
+                'totalApplications': 0,
+            }, status=status.HTTP_201_CREATED)
+
+        except ValueError as e:
+            logger.error(f"Date parsing error: {e}", exc_info=True)
+            return Response(
+                {"error": f"Invalid date format: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Error creating career fair: {e}", exc_info=True)
+            return Response(
+                {"error": "Failed to create career fair."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class UniversityAIInsightsView(APIView):
     """
     Provides AI match report insights for the university.
@@ -779,26 +851,22 @@ class UniversityStudentsView(APIView):
         university = university_staff.university
 
         try:
-            students = StudentProfile.objects.filter(university=university).select_related('user')
+            students = StudentProfile.objects.filter(university=university).select_related('user', 'university').prefetch_related('resumes')
             
             students_data = []
             for student in students:
-                # Calculate profile completion
-                profile_fields = [
-                    student.user.first_name, student.user.last_name, student.user.email,
-                    student.major, student.graduation_year, student.skills
-                ]
-                completed_fields = sum(1 for field in profile_fields if field)
-                profile_completion = int((completed_fields / len(profile_fields)) * 100)
-                
-                # Count applications
-                total_applications = Application.objects.filter(applicant=student.user).count()
-                successful_applications = Application.objects.filter(
-                    applicant=student.user, 
-                    status='OFFERED'
-                ).count()
-                
-                # Calculate AI match score (average of all AI match reports)
+                user = student.user
+                primary_resume = student.resumes.filter(is_primary=True).first()
+                resumes_data = []
+                if primary_resume:
+                    resumes_data.append({
+                        'id': str(primary_resume.id),
+                        'file_url': primary_resume.file_url,
+                        'file_name': primary_resume.file_name,
+                        'is_primary': primary_resume.is_primary,
+                    })
+                from jobs.models import AIAnalysisReport
+                import json
                 ai_reports = AIAnalysisReport.objects.filter(resume__student_profile=student)
                 ai_score = 0
                 if ai_reports.exists():
@@ -811,22 +879,22 @@ class UniversityStudentsView(APIView):
                         except (json.JSONDecodeError, TypeError):
                             continue
                     ai_score = total_score / ai_reports.count() if ai_reports.count() > 0 else 0
-                
-                # Check if student has resume
-                has_resume = student.resumes.exists()
-                
+
                 students_data.append({
-                    'id': str(student.user.id),
-                    'name': f"{student.user.first_name} {student.user.last_name}",
-                    'email': student.user.email,
-                    'major': student.major or 'Not specified',
-                    'graduationYear': str(student.graduation_year) if student.graduation_year else 'Not specified',
-                    'profileCompletion': profile_completion,
-                    'totalApplications': total_applications,
-                    'successfulApplications': successful_applications,
+                    'id': str(user.id),
+                    'name': user.full_name or f"{user.first_name} {user.last_name}",
+                    'email': user.email,
+                    'profile_picture_url': user.profile_picture_url,
+                    'bio': getattr(student, 'bio', None),
+                    'skills': student.skills or [],
+                    'interests': student.interests or [],
+                    'career_preferences': student.career_preferences or {},
+                    'resumes': resumes_data,
                     'aiMatchScore': round(ai_score, 1),
-                    'lastActive': student.user.last_login.isoformat() if student.user.last_login else 'Never',
-                    'hasResume': has_resume,
+                    'university': student.university.name if student.university else None,
+                    'graduation_year': student.graduation_year,
+                    'major': student.major,
+                    'social_links': getattr(user, 'social_links', None) or {},
                 })
             
             return Response(students_data, status=status.HTTP_200_OK)

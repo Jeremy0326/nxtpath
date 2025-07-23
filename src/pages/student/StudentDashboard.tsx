@@ -20,11 +20,13 @@ import {
   TrendingUp,
   Users,
   Zap,
-  MapPin
+  MapPin,
+  Heart
 } from 'lucide-react';
 import api from '../../lib/axios';
 import { careerFairService } from '../../services/careerFairService';
 import { jobService } from '../../services/jobService';
+import { studentService } from '../../services/studentService';
 import { ConnectionsPanel } from '../../components/student/ConnectionsPanel';
 
 interface Company {

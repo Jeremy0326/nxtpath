@@ -26,7 +26,7 @@ export function UniversityProfile() {
     const fetchUniversity = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/university/profile/');
+        const res = await api.get('/profile/');
         setUniversity(res.data);
         setForm(res.data);
       } catch (err) {
@@ -79,7 +79,7 @@ export function UniversityProfile() {
     setLoading(true);
     setSuccess('');
     try {
-      const res = await api.put('/university/profile/', form);
+      const res = await api.put('/profile/', form);
       setUniversity(res.data);
       setForm(res.data);
       setSuccess('Profile updated successfully!');

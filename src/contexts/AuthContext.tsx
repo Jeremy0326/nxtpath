@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthState, User, LoginCredentials, RegisterCredentials, UserRole } from '../types/auth';
+import { AuthState, LoginCredentials, RegisterCredentials } from '../types/auth';
 import api from '../lib/axios';
 
 interface AuthContextType extends AuthState {
@@ -43,23 +43,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false 
           }));
         })
-        .catch(() => {
+        .catch((error) => {
           // Token is invalid, clear it
+          console.warn('Token validation failed:', error.message);
           localStorage.removeItem('access_token');
+          localStorage.removeItem('token');
           localStorage.removeItem('refresh_token');
-          setState(prev => ({ ...prev, isLoading: false }));
+          localStorage.removeItem('refresh');
+          setState(prev => ({ 
+            ...prev, 
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false 
+          }));
         });
     } else {
       setState(prev => ({ ...prev, isLoading: false }));
     }
   }, []);
-
-  const determineUserRole = (email: string): UserRole => {
-    const domain = email.split('@')[1];
-    if (domain === 'university.edu') return 'university';
-    if (domain === 'company.com') return 'employer';
-    return 'student';
-  };
 
   const login = async (credentials: LoginCredentials) => {
     try {
@@ -111,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (credentials: RegisterCredentials) => {
     try {
-      const response = await api.post('register/', credentials);
+      await api.post('register/', credentials);
       // Optionally, auto-login after registration
       // await login({ email: credentials.email, password: credentials.password });
       setState(prev => ({ ...prev, isAuthenticated: false }));
@@ -174,4 +176,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}

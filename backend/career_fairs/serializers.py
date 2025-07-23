@@ -82,7 +82,10 @@ class CareerFairSerializer(serializers.ModelSerializer):
 
 class StudentInterestSerializer(serializers.ModelSerializer):
     student = UserSerializer(read_only=True)
+    booth_id = serializers.UUIDField(write_only=True)
+    company_name = serializers.CharField(source='booth.company.name', read_only=True)
+    booth_number = serializers.CharField(source='booth.booth_number', read_only=True)
 
     class Meta:
         model = StudentInterest
-        fields = ('id', 'student', 'timestamp') 
+        fields = ('id', 'booth_id', 'student', 'company_name', 'booth_number', 'timestamp') 
